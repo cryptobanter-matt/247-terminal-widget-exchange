@@ -1,5 +1,5 @@
 import { useState } from 'preact/hooks';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { motion } from 'framer-motion';
 import { NewsCardHeader } from './news_card_header';
 import { NewsCardBody } from './news_card_body';
@@ -15,7 +15,19 @@ interface NewsCardProps {
     on_trade?: (coin: string, amount: number, side: 'long' | 'short', news_id: string) => void;
 }
 
-const Card = styled(motion.div)<{ is_unread_alert?: boolean }>`
+const pulse_long = keyframes`
+    0% { border-color: transparent; box-shadow: 0 0 0 rgba(0, 196, 154, 0); }
+    50% { border-color: rgba(0, 196, 154, 0.9); box-shadow: 0 0 20px rgba(0, 196, 154, 0.5); }
+    100% { border-color: transparent; box-shadow: 0 0 0 rgba(0, 196, 154, 0); }
+`;
+
+const pulse_short = keyframes`
+    0% { border-color: transparent; box-shadow: 0 0 0 rgba(255, 107, 107, 0); }
+    50% { border-color: rgba(255, 107, 107, 0.9); box-shadow: 0 0 20px rgba(255, 107, 107, 0.5); }
+    100% { border-color: transparent; box-shadow: 0 0 0 rgba(255, 107, 107, 0); }
+`;
+
+const Card = styled(motion.div)<{ is_unread_alert?: boolean; pulse_side?: 'long' | 'short' | null }>`
     background: ${({ theme }) => theme.colors.surface};
     border-radius: ${({ theme }) => theme.radii.md};
     padding: ${({ theme }) => theme.spacing.md};
@@ -24,6 +36,10 @@ const Card = styled(motion.div)<{ is_unread_alert?: boolean }>`
     user-select: none;
     -webkit-user-select: none;
     transition: border-color 0.3s ease;
+    animation: ${({ pulse_side }) =>
+        pulse_side === 'long' ? pulse_long :
+        pulse_side === 'short' ? pulse_short :
+        'none'} 0.5s ease-out;
 
     ${container_query.min_wide} {
         padding: ${({ theme }) => theme.spacing.lg};
@@ -46,9 +62,13 @@ export function NewsCard({
     on_trade
 }: NewsCardProps) {
     const [is_seen, set_is_seen] = useState(false);
+    const [pulse_side, set_pulse_side] = useState<'long' | 'short' | null>(null);
     const is_alert = news_item.type === 'alert';
 
     const handle_trade = (coin: string, amount: number, side: 'long' | 'short') => {
+        set_pulse_side(null);
+        setTimeout(() => set_pulse_side(side), 10);
+        setTimeout(() => set_pulse_side(null), 510);
         on_trade?.(coin, amount, side, news_item._id);
     };
 
@@ -63,6 +83,7 @@ export function NewsCard({
     return (
         <Card
             is_unread_alert={is_alert && !is_seen}
+            pulse_side={pulse_side}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}

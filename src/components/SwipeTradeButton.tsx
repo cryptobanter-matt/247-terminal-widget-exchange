@@ -61,6 +61,7 @@ const Container = styled.div<{ trade_pulse: 'long' | 'short' | null }>`
     -webkit-user-select: none;
     touch-action: none;
     -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
     cursor: pointer;
     animation: ${({ trade_pulse }) =>
         trade_pulse === 'long' ? trade_pulse_long :
@@ -397,6 +398,7 @@ export function SwipeTradeButton({
             onPointerMove={handle_pointer_move}
             onPointerUp={handle_pointer_up}
             onPointerCancel={handle_pointer_up}
+            onContextMenu={(e) => e.preventDefault()}
         >
             <ButtonBase>
                 <Side side="long" is_active={active_side === 'long'} glow_intensity={active_side === 'long' ? progress : 0}>

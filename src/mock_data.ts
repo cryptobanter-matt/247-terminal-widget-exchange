@@ -2,15 +2,6 @@ import type { NewsItem, TradingConfig } from './types/news';
 
 export const mock_news_items: NewsItem[] = [
     {
-        _id: '3',
-        title: 'Unusual trading volume detected on OKX - 2,500 BTC moved from cold storage',
-        time: Date.now() - 1000 * 60 * 2,
-        scraped_time: Date.now() - 1000 * 60 * 2 + 89,
-        type: 'alert',
-        source: 'Whale Alert',
-        sentiment: 'neutral',
-    },
-    {
         _id: '1',
         title: 'Bitcoin ETF sees record $1.2B inflows as institutional demand surges',
         body: 'BlackRock\'s iShares Bitcoin Trust (IBIT) led the pack with over $500 million in single-day inflows, marking the highest volume since launch. The surge in institutional interest comes as Bitcoin approaches its previous all-time high, with analysts predicting further upside potential.',
@@ -139,41 +130,75 @@ export const mock_news_items: NewsItem[] = [
     },
 ];
 
-export const mock_trading_config_4: TradingConfig = {
+export const mock_trading_config_btc_only: TradingConfig = {
     coins: [
         { symbol: 'BTC', price_change_percent: 2.34 },
-        { symbol: 'ETH', price_change_percent: -0.87 },
     ],
     amount_presets: [100, 250, 500, 1000],
 };
 
-export const mock_trading_config_3: TradingConfig = {
+export const mock_trading_config_eth_sol: TradingConfig = {
     coins: [
-        { symbol: 'BTC', price_change_percent: 2.34 },
         { symbol: 'ETH', price_change_percent: -0.87 },
+        { symbol: 'SOL', price_change_percent: 5.12 },
     ],
-    amount_presets: [100, 500, 1000],
+    amount_presets: [50, 100, 250, 500],
 };
 
-export const mock_trading_config_2: TradingConfig = {
+export const mock_trading_config_btc_eth_sol: TradingConfig = {
     coins: [
         { symbol: 'BTC', price_change_percent: 2.34 },
         { symbol: 'ETH', price_change_percent: -0.87 },
+        { symbol: 'SOL', price_change_percent: 5.12 },
     ],
-    amount_presets: [250, 1000],
+    amount_presets: [100, 250, 500, 1000],
 };
 
-export const mock_trading_config_1: TradingConfig = {
+export const mock_trading_config_sol_only: TradingConfig = {
     coins: [
-        { symbol: 'BTC', price_change_percent: 2.34 },
-        { symbol: 'ETH', price_change_percent: -0.87 },
+        { symbol: 'SOL', price_change_percent: 5.12 },
     ],
-    amount_presets: [500],
+    amount_presets: [25, 50, 100, 250],
+};
+
+export const mock_trading_config_doge_xrp: TradingConfig = {
+    coins: [
+        { symbol: 'DOGE', price_change_percent: 12.45 },
+        { symbol: 'XRP', price_change_percent: -2.18 },
+    ],
+    amount_presets: [50, 100, 250, 500],
+};
+
+export const mock_trading_config_avax: TradingConfig = {
+    coins: [
+        { symbol: 'AVAX', price_change_percent: 3.67 },
+    ],
+    amount_presets: [100, 250, 500, 1000],
+};
+
+export const mock_trading_config_link_matic_arb: TradingConfig = {
+    coins: [
+        { symbol: 'LINK', price_change_percent: 1.23 },
+        { symbol: 'MATIC', price_change_percent: -4.56 },
+        { symbol: 'ARB', price_change_percent: 0.89 },
+    ],
+    amount_presets: [50, 100, 250, 500],
+};
+
+export const mock_trading_config_aave: TradingConfig = {
+    coins: [
+        { symbol: 'AAVE', price_change_percent: 8.92 },
+    ],
+    amount_presets: [100, 250, 500, 1000],
 };
 
 export const mock_trading_configs = [
-    mock_trading_config_4,
-    mock_trading_config_3,
-    mock_trading_config_2,
-    mock_trading_config_1,
+    mock_trading_config_btc_only,
+    mock_trading_config_eth_sol,
+    mock_trading_config_btc_eth_sol,
+    mock_trading_config_sol_only,
+    mock_trading_config_doge_xrp,
+    mock_trading_config_avax,
+    mock_trading_config_link_matic_arb,
+    mock_trading_config_aave,
 ];

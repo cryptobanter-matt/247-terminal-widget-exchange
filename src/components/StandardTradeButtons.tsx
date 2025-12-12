@@ -126,6 +126,7 @@ const TradeButton = styled.button<{
     overflow: hidden;
     user-select: none;
     -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
     transition: filter 0.1s ease, opacity 0.15s ease;
     opacity: ${({ is_pressing }) => is_pressing ? 1 : 0.8};
@@ -173,12 +174,26 @@ function ButtonProgressRing({ progress, side }: ButtonProgressRingProps) {
 
     useEffect(() => {
         const el = wrapper_ref.current;
-        if (!el || dims) return;
-        const rect = el.getBoundingClientRect();
-        if (rect.width > 0 && rect.height > 0) {
-            set_dims({ w: rect.width, h: rect.height });
-        }
-    }, [dims]);
+        if (!el) return;
+
+        const update_dims = () => {
+            const rect = el.getBoundingClientRect();
+            if (rect.width > 0 && rect.height > 0) {
+                set_dims(prev => {
+                    if (prev && prev.w === rect.width && prev.h === rect.height) {
+                        return prev;
+                    }
+                    return { w: rect.width, h: rect.height };
+                });
+            }
+        };
+
+        update_dims();
+
+        const observer = new ResizeObserver(update_dims);
+        observer.observe(el);
+        return () => observer.disconnect();
+    }, []);
 
     if (!dims) {
         return <ProgressWrapper ref={wrapper_ref} />;

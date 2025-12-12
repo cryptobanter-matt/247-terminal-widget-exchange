@@ -1,5 +1,5 @@
 import styled, { keyframes } from 'styled-components';
-import { NewsIcon, TwitterIcon, AlertIcon } from '../../components/icons';
+import { NewsIcon, TwitterIcon, AlertIcon, ExternalLinkIcon } from '../../components/icons';
 import type { NewsType } from '../../types/news';
 import { container_query } from '../../styles/theme';
 
@@ -37,38 +37,68 @@ const Header = styled.div`
 
 const TypeIconWrapper = styled.div<{ is_alert?: boolean }>`
     flex-shrink: 0;
-    width: 20px;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 6px;
+    background: ${({ is_alert }) => is_alert ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.08)'};
     color: ${({ is_alert, theme }) => is_alert ? '#f59e0b' : theme.colors.text_secondary};
     animation: ${({ is_alert }) => is_alert ? alert_shake : 'none'} 1.2s ease-out;
     animation-delay: 0.3s;
 
     ${container_query.min_wide} {
-        width: 24px;
+        width: 32px;
+        height: 32px;
     }
 `;
 
-const TitleLink = styled.a<{ is_alert?: boolean }>`
+const TitleWrapper = styled.a<{ is_alert?: boolean }>`
     flex: 1;
     min-width: 0;
-    font-weight: 600;
-    font-size: ${({ theme }) => theme.font_sizes.medium};
-    color: ${({ is_alert, theme }) => is_alert ? '#f59e0b' : theme.colors.text_primary};
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
     text-decoration: none;
-    line-height: 1.3;
-    display: -webkit-box;
-    -webkit-line-clamp: 3;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+    cursor: pointer;
 
-    &:hover {
+    &:hover .title-text {
         color: ${({ is_alert, theme }) => is_alert ? '#f59e0b' : theme.colors.primary};
     }
 
+    &:hover .link-icon {
+        color: ${({ theme }) => theme.colors.primary};
+        transform: translate(1px, -1px);
+    }
+`;
+
+const TitleText = styled.span<{ is_alert?: boolean }>`
+    font-weight: 600;
+    font-size: ${({ theme }) => theme.font_sizes.medium};
+    color: ${({ is_alert, theme }) => is_alert ? '#f59e0b' : theme.colors.text_primary};
+    line-height: 1.3;
+    transition: color 0.15s ease;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+
     ${container_query.min_wide} {
         font-size: ${({ theme }) => theme.font_sizes.large};
+    }
+`;
+
+const LinkIconWrapper = styled.span`
+    flex-shrink: 0;
+    display: none;
+    align-items: center;
+    align-self: center;
+    color: ${({ theme }) => theme.colors.text_secondary};
+    transition: color 0.15s ease, transform 0.15s ease;
+
+    ${container_query.min_wide} {
+        display: inline-flex;
     }
 `;
 
@@ -116,9 +146,9 @@ function TypeIcon({ type }: { type?: NewsType }) {
 function get_sentiment_text(sentiment: 'positive' | 'negative' | 'neutral'): string {
     switch (sentiment) {
         case 'positive':
-            return 'GOOD';
+            return 'POSITIVE';
         case 'negative':
-            return 'BAD';
+            return 'NEGATIVE';
         case 'neutral':
         default:
             return 'NEUTRAL';
@@ -156,15 +186,22 @@ export function NewsCardHeader({
                 <TypeIcon type={type} />
             </TypeIconWrapper>
 
-            <TitleLink
+            <TitleWrapper
                 is_alert={type === 'alert'}
                 href={url}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={handle_click}
             >
-                {display_title}
-            </TitleLink>
+                <TitleText is_alert={type === 'alert'} className="title-text">
+                    {display_title}
+                </TitleText>
+                {url && (
+                    <LinkIconWrapper className="link-icon">
+                        <ExternalLinkIcon size={18} />
+                    </LinkIconWrapper>
+                )}
+            </TitleWrapper>
 
             <RightSection>
                 {sentiment && (

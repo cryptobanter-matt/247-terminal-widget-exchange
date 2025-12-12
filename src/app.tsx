@@ -9,7 +9,7 @@ import { mock_news_items, mock_trading_configs } from './mock_data';
 export type ButtonStyle = 'swipe' | 'standard';
 
 const ToggleContainer = styled.div`
-    display: flex;
+    display: none;
     align-items: center;
     justify-content: center;
     gap: 8px;
@@ -17,6 +17,10 @@ const ToggleContainer = styled.div`
     margin-bottom: 12px;
     background: ${({ theme }) => theme.colors.surface};
     border-radius: ${({ theme }) => theme.radii.md};
+
+    @media (min-width: 600px) {
+        display: flex;
+    }
 `;
 
 const ToggleLabel = styled.span`
