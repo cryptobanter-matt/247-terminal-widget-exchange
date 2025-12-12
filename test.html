@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Widget Test</title>
+    <style>
+        body {
+            background: #333;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        h1 {
+            color: white;
+        }
+        #widget-container {
+            width: 400px;
+            height: 600px;
+            border: 1px solid #666;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+    </style>
+</head>
+<body>
+    <h1>Exchange Website (Host Page)</h1>
+    <p style="color: #aaa;">The widget below is rendered inside a Shadow DOM:</p>
+
+    <div id="widget-container"></div>
+
+    <script src="./dist/main.js"></script>
+    <script>
+        ExchangeWidget.init({
+            container_selector: '#widget-container',
+            api_key: 'test_key_123'
+        });
+    </script>
+</body>
+</html>
