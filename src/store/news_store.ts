@@ -1,6 +1,9 @@
 import { create } from 'zustand';
 import type { NewsItem, SentimentData, TradingVolumeAlert } from '../types/news';
 
+const MAX_NEWS_ITEMS = 100;
+const MAX_VOLUME_ALERTS = 10;
+
 interface NewsState {
     news_items: NewsItem[];
     sentiment_map: Map<string, SentimentData>;
@@ -8,33 +11,33 @@ interface NewsState {
     selected_news_id: string | null;
     is_connected: boolean;
     connection_error: string | null;
-    max_news_items: number;
+}
 
+interface NewsActions {
     add_news_item: (item: NewsItem) => void;
     add_sentiment: (sentiment: SentimentData) => void;
     add_volume_alert: (alert: TradingVolumeAlert) => void;
-    set_selected_news: (news_id: string | null) => void;
-    set_connection_status: (is_connected: boolean, error?: string | null) => void;
+    set_selected_news: (id: string | null) => void;
+    set_connection_status: (connected: boolean) => void;
+    set_connection_error: (error: string | null) => void;
     clear_news: () => void;
 }
 
-export const use_news_store = create<NewsState>((set, get) => ({
+export const use_news_store = create<NewsState & NewsActions>((set, get) => ({
     news_items: [],
     sentiment_map: new Map(),
     volume_alerts: [],
     selected_news_id: null,
     is_connected: false,
     connection_error: null,
-    max_news_items: 100,
 
     add_news_item: (item) => set((state) => {
-        const exists = state.news_items.some(n => n._id === item._id);
-        if (exists) return state;
+        if (state.news_items.some(n => n._id === item._id)) {
+            return state;
+        }
 
-        const updated_items = [item, ...state.news_items]
-            .slice(0, state.max_news_items);
-
-        return { news_items: updated_items };
+        const updated = [item, ...state.news_items].slice(0, MAX_NEWS_ITEMS);
+        return { news_items: updated };
     }),
 
     add_sentiment: (sentiment) => set((state) => {
@@ -44,19 +47,22 @@ export const use_news_store = create<NewsState>((set, get) => ({
     }),
 
     add_volume_alert: (alert) => set((state) => ({
-        volume_alerts: [alert, ...state.volume_alerts].slice(0, 20)
+        volume_alerts: [alert, ...state.volume_alerts].slice(0, MAX_VOLUME_ALERTS),
     })),
 
-    set_selected_news: (news_id) => set({ selected_news_id: news_id }),
+    set_selected_news: (id) => set({ selected_news_id: id }),
 
-    set_connection_status: (is_connected, error = null) => set({
-        is_connected,
-        connection_error: error
+    set_connection_status: (connected) => set({
+        is_connected: connected,
+        connection_error: connected ? null : get().connection_error,
     }),
+
+    set_connection_error: (error) => set({ connection_error: error }),
 
     clear_news: () => set({
         news_items: [],
         sentiment_map: new Map(),
-        volume_alerts: []
-    })
+        volume_alerts: [],
+        selected_news_id: null,
+    }),
 }));

@@ -1,52 +1,186 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware';
+import config from '../config/_index.ts';
+import type { ThemeConfig } from '../config/theme.ts';
+import type { FeatureFlags, TradeAmountConfig, InitializationStatus} from '../types/widget.ts';
 
-interface ThemeConfig {
-    primary_color?: string;
-    background_color?: string;
-}
-
-interface FeatureFlags {
-    show_pnl?: boolean;
-    allow_market_orders?: boolean;
-}
+const MIN_PRESETS = config.trading.min_amount_options;
+const MAX_PRESETS = config.trading.max_amount_options;
+const MIN_AMOUNT = config.trading.min_trade_amount;
 
 interface WidgetState {
     api_key: string | null;
     exchange_id: string | null;
     exchange_user_id: string | null;
-    theme_config: ThemeConfig;
-    feature_flags: FeatureFlags;
-    is_loading: boolean;
-    error: string | null;
-
-    initialize: (config: { api_key: string; exchange_user_id?: string }) => void;
-    set_exchange_id: (exchange_id: string) => void;
-    set_config: (config: { theme_config: ThemeConfig; feature_flags: FeatureFlags }) => void;
-    set_loading: (is_loading: boolean) => void;
-    set_error: (error: string | null) => void;
+    theme: ThemeConfig | null;
+    feature_flags: FeatureFlags | null;
+    initialization_status: InitializationStatus;
+    initialization_error: string | null;
+    trade_amounts: TradeAmountConfig;
 }
 
-export const use_widget_store = create<WidgetState>((set) => ({
-    api_key: null,
-    exchange_id: null,
-    exchange_user_id: null,
-    theme_config: {},
-    feature_flags: {},
-    is_loading: false,
-    error: null,
+interface WidgetActions {
+    initialize: (api_key: string, exchange_user_id: string | null) => void;
+    set_exchange_id: (id: string) => void;
+    set_theme: (theme: ThemeConfig) => void;
+    set_feature_flags: (flags: FeatureFlags) => void;
+    set_initialization_status: (status: InitializationStatus) => void;
+    set_initialization_error: (error: string | null) => void;
+    reset: () => void;
+    set_trade_amount_presets: (presets: number[]) => void;
+    select_trade_amount: (index: number) => void;
+    set_custom_amount: (amount: number | null) => void;
+    add_trade_amount_preset: (amount: number) => void;
+    remove_trade_amount_preset: (index: number) => void;
+    get_current_trade_amount: () => number;
+}
 
-    initialize: (config) => set({
-        api_key: config.api_key,
-        exchange_user_id: config.exchange_user_id || null
-    }),
+function validate_amount(amount: number): boolean {
+    return amount >= MIN_AMOUNT && Number.isFinite(amount);
+}
 
-    set_exchange_id: (exchange_id) => set({ exchange_id }),
+export const use_widget_store = create<WidgetState & WidgetActions>()(
+    persist(
+        (set, get) => ({
+            api_key: null,
+            exchange_id: null,
+            exchange_user_id: null,
+            theme: null,
+            feature_flags: null,
+            initialization_status: 'idle',
+            initialization_error: null,
+            trade_amounts: {
+                presets: config.trading.default_amounts,
+                selected_index: 0,
+                custom_amount: null,
+            },
 
-    set_config: (config) => set({
-        theme_config: config.theme_config,
-        feature_flags: config.feature_flags,
-    }),
+            initialize: (api_key, exchange_user_id) => set ({
+                api_key,
+                exchange_user_id,
+                initialization_status: 'loading',
+                initialization_error: null,
+            }),
 
-    set_loading: (is_loading) => set({ is_loading }),
-    set_error: (error) => set({ error }),
-}));
+            set_exchange_id: (id) => set({ exchange_id: id }),
+            set_theme: (theme) => set({ theme }),
+            set_feature_flags: (flags) => set({ feature_flags: flags }),
+            set_initialization_status: (status) => set({ initialization_status: status }),
+            set_initialization_error: (error) => set({ initialization_error: error }),
+
+            reset: () => set({
+                api_key: null,
+                exchange_id: null,
+                exchange_user_id: null,
+                theme: null,
+                feature_flags: null,
+                initialization_status: 'idle',
+                initialization_error: null,
+            }),
+
+            set_trade_amount_presets: (presets) => {
+                const valid_presets = presets
+                    .filter(validate_amount)
+                    .slice(0, MAX_PRESETS);
+
+                if (valid_presets.length < MIN_PRESETS) {
+                    console.warn(`[widget_store] At least ${MIN_PRESETS} trade amount preset required`);
+                    return;
+                }
+
+                set((state) => ({
+                    trade_amounts: {
+                        ...state.trade_amounts,
+                        presets: valid_presets,
+                        selected_index: Math.min(state.trade_amounts.selected_index, valid_presets.length - 1),
+                    },
+                }));
+            },
+
+            select_trade_amount: (index) => {
+                const { presets } = get().trade_amounts;
+                if (index < 0 || index >= presets.length) return;
+
+                set((state) => ({
+                    trade_amounts: {
+                        ...state.trade_amounts,
+                        selected_index: index,
+                        custom_amount: null,
+                    },
+                }));
+            },
+
+            set_custom_amount: (amount) => {
+                if (amount !== null && !validate_amount(amount)) {
+                    console.warn(`[widget_store] Invalid trade amount: ${amount}`);
+                    return;
+                }
+
+                set((state) => ({
+                    trade_amounts: {
+                        ...state.trade_amounts,
+                        custom_amount: amount,
+                    },
+                }));
+            },
+
+            add_trade_amount_preset: (amount) => {
+                const { presets } = get().trade_amounts;
+
+                if (presets.length >= MAX_PRESETS) {
+                    console.warn(`[widget_store] Maximum ${MAX_PRESETS} presets allowed`);
+                    return;
+                }
+
+                if (!validate_amount(amount)) {
+                    console.warn(`[widget_store] Invalid amount: ${amount}`);
+                    return;
+                }
+
+                if (presets.includes(amount)) {
+                    console.warn(`[widget_store] Amount ${amount} already exists`);
+                    return;
+                }
+
+                const new_presets = [...presets, amount].sort((a, b) => a - b);
+
+                set((state) => ({
+                    trade_amounts: {
+                        ...state.trade_amounts,
+                        presets: new_presets,
+                    },
+                }));
+            },
+
+            remove_trade_amount_preset: (index) => {
+                const { presets } = get().trade_amounts;
+
+                if (presets.length <= MIN_PRESETS) {
+                    console.warn(`[widget_store] Minimum ${MIN_PRESETS} preset required`);
+                    return;
+                }
+
+                const new_presets = presets.filter((_, i) => i !== index);
+
+                set((state) => ({
+                    trade_amounts: {
+                        ...state.trade_amounts,
+                        presets: new_presets,
+                        selected_index: Math.min(state.trade_amounts.selected_index, new_presets.length - 1),
+                    },
+                }));
+            },
+
+            get_current_trade_amount: () => {
+                const { presets, selected_index, custom_amount } = get().trade_amounts;
+                return custom_amount ?? presets[selected_index];
+            },
+        }),
+        {
+            name: '247terminal-widget-storage',
+            partialize: (state) => ({
+                trade_amounts: state.trade_amounts,
+            }),
+        }
+    )
+)

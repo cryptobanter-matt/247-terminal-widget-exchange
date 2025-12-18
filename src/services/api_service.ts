@@ -1,50 +1,62 @@
-import { use_widget_store } from '../store/widget_store';
-
-const API_BASE_URL = 'https://your-backend.com/api/app/widget';
-
-interface TradeParams {
-    pair: string;
-    amount: number;
-    side: 'buy' | 'sell';
-}
+import config from "../config/_index.ts";
+import { use_widget_store } from "../store/widget_store.ts";
+import type { WidgetConfigResponse } from "../types/widget.ts";
+import type { TradeParams, TradeTokenResponse } from "../types/trade.ts";
 
 export const api_service = {
-    fetch_widget_config: async () => {
-        const { exchange_id, set_config, set_error } = use_widget_store.getState();
+    fetch_widget_config: async (): Promise<WidgetConfigResponse['data'] | null> => {
+        const { api_key } = use_widget_store.getState();
+
         try {
-            const response = await fetch(`${API_BASE_URL}/config?id=${exchange_id}`);
-            if (!response.ok) {
-                throw new Error('Failed to fetch widget configuration.');
-            }
-            const config = await response.json();
-            set_config(config);
-        } catch (err: any) {
-            set_error(err.message);
+            const response = await fetch(`${config.api.base_url}/config`, {
+                method: 'GET',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(api_key && { 'X-API-Key': api_key }),
+                }
+            });
+            if (!response.ok) throw new Error(`Config fetch failed: ${response.status}`);
+
+            const result: WidgetConfigResponse = await response.json();
+            if (!result.success) throw new Error('Config response unsuccessful');
+
+            return result.data;
+        } catch (error) {
+            console.error('[api_service] fetch_widget_config error:', error);
+            return null;
         }
     },
 
-    generate_trade_token: async (trade_params: TradeParams): Promise<string | null> => {
-        const { exchange_id, exchange_user_id, set_error } = use_widget_store.getState();
+    generate_trade_token: async (trade_params: TradeParams): Promise<TradeTokenResponse['data'] | null> => {
+        const { api_key, exchange_id, exchange_user_id } = use_widget_store.getState();
+
+        if (!exchange_id || !exchange_user_id) {
+            console.error('[api_service] Missing exchange_id or exchange_user_id');
+            return null;
+        }
+
         try {
-            const response = await fetch(`${API_BASE_URL}/generate-trade-token`, {
+            const response = await fetch(`${config.api.base_url}/generate-trade-token`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(api_key && { 'X-API-Key': api_key }),
+                },
                 body: JSON.stringify({
                     exchange_id,
                     exchange_user_id,
                     trade_params,
                 }),
             });
+            if (!response.ok) throw new Error(`Trade token request failed: ${response.status}`);
 
-            if (!response.ok) {
-                throw new Error('Failed to generate trade token.');
-            }
-
-            const { token } = await response.json();
-            return token;
-        } catch (err: any) {
-            set_error(err.message);
+            const result: TradeTokenResponse = await response.json();
+            if (!result.success) throw new Error(result.error || 'Trade token response unsuccessful');
+            
+            return result.data;
+        } catch (error) {
+            console.error('[api_service] generate_trade_token error:', error);
             return null;
         }
-    },
-};
+    }
+}

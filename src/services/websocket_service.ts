@@ -1,141 +1,156 @@
-import { use_news_store } from "../store/news_store";
-import type { NewsItem, SentimentData, TradingVolumeAlert, WebSocketMessage } from "../types/news";
-
-const WS_BASE_URL = 'wss://api.247terminal.com/ws/widget';
+import config from "../config/_index.ts";
+import type { NewsItem, SentimentData, TradingVolumeAlert, WebSocketMessage } from "../types/news.ts";
 
 interface WebSocketServiceConfig {
     api_key: string;
-    on_open?: () => void;
-    on_close?: (event: CloseEvent) => void;
-    on_error?: (event: Event) => void;
+    on_news: (news: NewsItem) => void;
+    on_sentiment: (sentiment: SentimentData) => void;
+    on_volume_alert: (alert: TradingVolumeAlert) => void;
+    on_connection_change: (connected: boolean) => void;
+    on_error: (error: string) => void;
 }
 
 class WebSocketService {
     private socket: WebSocket | null = null;
-    private config: WebSocketServiceConfig | null = null;
+    private service_config: WebSocketServiceConfig | null = null;
     private reconnect_attempts = 0;
-    private max_reconnect_attempts = 5;
-    private reconnect_delay = 1000;
-    private ping_interval: ReturnType<typeof setInterval> | null = null;
+    private ping_interval_id: number | null = null;
+    private is_authenticated = false;
 
-    connect(config: WebSocketServiceConfig) {
-        this.config = config;
+    connect(service_config: WebSocketServiceConfig): void {
+        this.service_config = service_config;
         this.establish_connection();
     }
 
-    private establish_connection() {
-        if (!this.config) return;
-
-        const { set_connection_status, add_news_item, add_sentiment, add_volume_alert } = use_news_store.getState();
-
-        try {
-            this.socket = new WebSocket(WS_BASE_URL);
-        
-            this.socket.onopen = () => {
-                this.send_auth_message();
-                this.start_ping_interval();
-                this.reconnect_attempts = 0;
-            };
-            
-            this.socket.onmessage = (event) => {
-                this.handle_message(event.data);
-            };
-
-            this.socket.onclose = (event) => {
-                this.stop_ping_interval();
-                set_connection_status(false);
-                this.config?.on_close?.(event);
-
-                if (event.code !== 1000 && this.reconnect_attempts < this.max_reconnect_attempts) this.schedule_reconnect();
-            };
-
-            this.socket.onerror = (error) => {
-                set_connection_status(false, 'websocket connection error');
-                this.config?.on_error?.(error);
-            };
-        } catch (error) {
-            set_connection_status(false, 'failed to create websocket connection');
+    disconnect(): void {
+        this.stop_ping_interval();
+        if (this.socket) {
+            this.socket.close(1000, 'Client disconnect');
+            this.socket = null;
         }
+        this.is_authenticated = false;
+        this.reconnect_attempts = 0;
     }
 
-    private send_auth_message() {
-        if (!this.socket || !this.config) return;
+    is_connected(): boolean {
+        return this.socket?.readyState === WebSocket.OPEN && this.is_authenticated;
+    }
+
+    private establish_connection(): void {
+        if (!this.service_config) return;
+
+        this.socket = new WebSocket(config.websocket.url);
+
+        this.socket.onopen = () => {
+            this.send_auth_message();
+        };
+
+        this.socket.onmessage = (event) => {
+            this.handle_message(event.data);
+        };
+
+        this.socket.onclose = (event) => {
+            this.handle_close(event);
+        };
+
+        this.socket.onerror = () => {
+            this.service_config?.on_error('WebSocket connection error');
+        };
+    }
+
+    private send_auth_message(): void {
+        if (!this.socket || !this.service_config) return;
 
         const auth_message = {
             type: 'auth',
-            api_key: this.config.api_key,
+            api_key: this.service_config.api_key,
         };
 
         this.socket.send(JSON.stringify(auth_message));
     }
 
-    private handle_message(data: string) {
-        const { set_connection_status, add_news_item, add_sentiment, add_volume_alert } = use_news_store.getState();
+    private handle_message(data: string): void {
+        if (!this.service_config) return;
+        if (data === 'pong') return;
 
         try {
-            const message: WebSocketMessage = JSON.parse(data);
+            const message = JSON.parse(data) as WebSocketMessage;
 
-            if ('type' in message) {
-                if (message.type === 'authorized') {
-                    set_connection_status(true);
-                    this.config?.on_open?.();
-                    return;
-                }
-                if (message.type === 'ai_sentiment') {
-                    add_sentiment(message as SentimentData);
-                    return;
-                }
-                if (message.type === 'trading_volume_alert') {
-                    add_volume_alert(message as TradingVolumeAlert);
-                    return
-                }
-            }
+            switch (message.type) {
+                case 'auth_success': 
+                    this.is_authenticated = true;
+                    this.reconnect_attempts = 0;
+                    this.start_ping_interval();
+                    this.service_config.on_connection_change(true);
+                    break;
+                
+                case 'auth_error':
+                    this.service_config.on_error(`Authentication failed: ${message.error}`);
+                    this.service_config.on_connection_change(false);
+                    break;
 
-            if ('_id' in message && 'title' in message) {
-                add_news_item(message as NewsItem);
-            }
-        } catch (error) {
-            console.error('failed to parse websocket message:', error);
+                case 'news':
+                    this.service_config.on_news(message.data);
+                    break;
+
+                case 'ai_sentiment':
+                    this.service_config.on_sentiment({
+                        news_id: message.news_id,
+                        sentiment: message.sentiment as 'positive' | 'negative' | 'neutral',
+                    });
+                    break;
+
+                case 'trading_volume_alert':
+                    this.service_config.on_volume_alert(message as TradingVolumeAlert);
+                    break;
+
+                case 'pong':
+                    break;
+            } 
+        } catch {
+
         }
     }
 
-    private start_ping_interval() {
-        this.ping_interval = setInterval(() => {
-            if (this.socket?.readyState === WebSocket.OPEN) {
-                this.socket.send('ping');
-            }
-        }, 3000);
+    private handle_close(event: CloseEvent): void {
+        this.is_authenticated = false;
+        this.stop_ping_interval();
+        this.service_config?.on_connection_change(false);
+        
+        const no_reconnect_codes = [1000, 4001, 40002, 4003];
+        if (no_reconnect_codes.includes(event.code)) return;
+
+        this.schedule_reconnect()
     }
 
-    private stop_ping_interval() {
-        if (this.ping_interval) {
-            clearInterval(this.ping_interval);
-            this.ping_interval = null;
+    private schedule_reconnect(): void {
+        const { max_attempts, base_delay, max_delay } = config.websocket.reconnect;
+
+        if (this.reconnect_attempts >= max_attempts) {
+            this.service_config?.on_error('Max reconnection attempts reached');
+            return;
         }
-    }
 
-    private schedule_reconnect() {
+        const delay = Math.min(base_delay * Math.pow(2, this.reconnect_attempts), max_delay);
         this.reconnect_attempts++;
-        const delay = this.reconnect_delay * Math.pow(2, this.reconnect_attempts - 1);
 
         setTimeout(() => {
-            this.establish_connection();
+            this.establish_connection()
         }, delay);
     }
 
-    disconnect() {
-        this.stop_ping_interval();
-        if (this.socket) {
-            this.socket.close(1000, 'client disconnecting')
-            this.socket = null;
-        }
-        this.config = null;
-        this.reconnect_attempts = 0;
+    private start_ping_interval(): void {
+        this.ping_interval_id = window.setInterval(() => {
+            if (this.socket?.readyState === WebSocket.OPEN) this.socket.send('ping');
+        }, config.websocket.ping_interval)
     }
 
-    is_connected(): boolean {
-        return this.socket?.readyState === WebSocket.OPEN;
+    private stop_ping_interval(): void {
+        if (this.ping_interval_id) {
+            clearInterval(this.ping_interval_id);
+            this.ping_interval_id = null;
+        }
     }
 }
 
-export const websocket_service = new WebSocketService()
+export const websocket_service = new WebSocketService();
