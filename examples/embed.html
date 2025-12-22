@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>247 Terminal Widget - Embed Example</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #fff;
+        }
+        h1 { margin-bottom: 20px; }
+        #terminal-widget {
+            width: 400px;
+            height: 600px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .trade-log {
+            margin-top: 20px;
+            padding: 16px;
+            background: #2a2a2a;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Exchange Website</h1>
+    <div id="terminal-widget"></div>
+    <div class="trade-log">
+        <strong>Trade Events:</strong>
+        <pre id="trade-output">Waiting for trades...</pre>
+    </div>
+
+    <script src="../dist/widget.js"></script>
+    <script>
+        document.addEventListener('247terminal:trade', function(event) {
+            var output = document.getElementById('trade-output');
+            output.textContent = JSON.stringify(event.detail, null, 2);
+            console.log('Trade requested:', event.detail);
+        });
+
+        ExchangeWidget.init({
+            container_selector: '#terminal-widget',
+            api_key: 'wk_live_your_api_key',
+            exchange_user_id: 'user-uuid-from-exchange',
+        }).then(function(instance) {
+            if (instance) {
+                console.log('Widget initialized successfully');
+            } else {
+                console.error('Widget initialization failed');
+            }
+        });
+    </script>
+</body>
+</html>

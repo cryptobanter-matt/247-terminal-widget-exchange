@@ -1,8 +1,8 @@
 # Widget Implementation Status - Consolidated Plan
 
-> **Last Updated:** 2025-12-18
+> **Last Updated:** 2025-12-22
 >
-> This document consolidates all widget-related implementation plans into a single source of truth.
+> This document consolidates all widget-related implementation into a single source of truth.
 
 ---
 
@@ -12,10 +12,8 @@
 2. [Architecture Overview](#architecture-overview)
 3. [Implementation Status](#implementation-status)
 4. [Outstanding Tasks](#outstanding-tasks)
-5. [Backend Component Reference](#backend-component-reference)
-6. [Frontend Widget (Separate Repository)](#frontend-widget-separate-repository)
-7. [API Reference](#api-reference)
-8. [Testing Checklist](#testing-checklist)
+5. [Backend API Reference](#backend-api-reference)
+6. [Testing Checklist](#testing-checklist)
 
 ---
 
@@ -34,15 +32,15 @@ The widget uses a **One-Time Trade Token** system:
 
 | Component | Status | Location |
 |-----------|--------|----------|
-| Database Schema | ✅ Complete | `migrations/006_*.sql`, `migrations/007_*.sql` |
-| Widget Model (Postgres) | ✅ Complete | `app/models/postgres/widget.js` |
-| Widget Connection (Redis) | ✅ Complete | `app/models/redis/widget_connection.js` |
-| REST API (Trade Token) | ✅ Complete | `app/routes/widget/` |
-| REST API (Config) | ✅ Complete | `app/routes/widget/` |
-| WebSocket Service | ✅ Complete | `app/websocket/widget/` |
-| News Broadcasting | ✅ Complete | `app/websocket/news/news.broadcaster.js` |
-| Trade Stats (Public) | ✅ Complete | `app/models/redis/trade_stats.js` |
-| Frontend Widget | ❌ Not Started | Separate repository required |
+| Database Schema | ✅ Complete | Backend: `migrations/006_*.sql`, `migrations/007_*.sql` |
+| Widget Model (Postgres) | ✅ Complete | Backend: `app/models/postgres/widget.js` |
+| Widget Connection (Redis) | ✅ Complete | Backend: `app/models/redis/widget_connection.js` |
+| REST API (Trade Token) | ✅ Complete | Backend: `app/routes/widget/` |
+| REST API (Config) | ✅ Complete | Backend: `app/routes/widget/` |
+| WebSocket Service | ✅ Complete | Backend: `app/websocket/widget/` |
+| News Broadcasting | ✅ Complete | Backend: `app/websocket/news/news.broadcaster.js` |
+| Trade Stats (Public) | ✅ Complete | Backend: `app/models/redis/trade_stats.js` |
+| **Frontend Widget** | 🟡 In Progress | This repository |
 
 ---
 
@@ -98,113 +96,144 @@ The widget uses a **One-Time Trade Token** system:
 
 ## Implementation Status
 
-### Phase 1: Database Foundation ✅ COMPLETE
+### Frontend Widget - Technology Stack
 
-**Migration 006** - `migrations/006_create_widget_tables.sql`
-- `exchange_configurations` table (base)
-- `widget_trades` table
-- Index on `widget_trades(exchange_id)`
+| Technology | Version | Purpose |
+|------------|---------|---------|
+| Preact | 10.27.2 | Lightweight React alternative |
+| TypeScript | 5.9.3 | Type safety with strict mode |
+| Zustand | 5.0.9 | State management with persist middleware |
+| styled-components | 6.1.19 | CSS-in-JS theming |
+| Framer Motion | 12.23.26 | Animations |
+| Vite | 6.1.1 | Build tooling with UMD output |
 
-**Migration 007** - `migrations/007_add_widget_columns.sql`
-- Added: `api_key`, `display_name`, `allowed_origins`, `rate_limit_connections`, `rate_limit_messages_per_minute`
-- Index on `exchange_configurations(api_key)`
-- Index on `widget_trades(created_at)`
-- Auto-update trigger for `updated_at`
+### Frontend Widget - File Structure
 
-### Phase 2: Widget Model (Postgres) ✅ COMPLETE
-
-**File:** `app/models/postgres/widget.js`
-
-| Method | Status | Description |
-|--------|--------|-------------|
-| `get_exchange_config(exchange_id)` | ✅ | Get active exchange by ID |
-| `get_exchange_by_api_key(api_key)` | ✅ | Get exchange by API key (for WebSocket auth) |
-| `create_trade_log(...)` | ✅ | Log trade token request |
-| `update_trade_status(trade_id, status)` | ✅ | Update trade status |
-
-### Phase 3: Widget Connection Model (Redis) ✅ COMPLETE
-
-**File:** `app/models/redis/widget_connection.js`
-
-| Method | Status | Description |
-|--------|--------|-------------|
-| `add(socket_id, exchange_id)` | ✅ | Track new connection |
-| `remove(socket_id, exchange_id)` | ✅ | Remove connection |
-| `get(socket_id)` | ✅ | Get connection details |
-| `get_exchange_socket_ids(exchange_id)` | ✅ | Get all sockets for exchange |
-| `count_exchange_connections(exchange_id)` | ✅ | Count exchange connections |
-| `exists(socket_id)` | ✅ | Check if connection exists |
-| `count_total_connections()` | ✅ | Count all widget connections |
-
-### Phase 4: REST API ✅ COMPLETE
-
-**Trade Token Endpoint**
-- Route: `POST /api/app/widget/generate-trade-token`
-- Controller: `app/routes/widget/widget.controller.js`
-- Service: `app/routes/widget/widget.service.js`
-
-**Config Endpoint**
-- Route: `GET /api/app/widget/config?id={exchange_id}`
-- Controller: `app/routes/widget/widget.controller.js`
-- Service: `app/routes/widget/widget.service.js` (with Redis caching)
-
-### Phase 5: WebSocket Service ✅ COMPLETE
-
-**File:** `app/websocket/widget/widget.service.js`
-
-| Feature | Status | Description |
-|---------|--------|-------------|
-| API Key Authentication | ✅ | Validates `api_key` from auth message |
-| Exchange Connection Tracking | ✅ | Uses Redis for connection state |
-| Connection Rate Limiting | ✅ | Per-IP and per-exchange limits |
-| Message Rate Limiting | ✅ | Configurable messages per minute |
-| Heartbeat/Ping-Pong | ✅ | Keep-alive with timeout |
-| Auth Timeout | ✅ | 10 second timeout for auth |
-| `broadcast_news(news_item)` | ✅ | Broadcast news to all widget clients |
-| `broadcast_to_exchange(exchange_id, data)` | ✅ | Broadcast to specific exchange |
-
-### Phase 6: News Broadcasting Integration ✅ COMPLETE
-
-**File:** `app/websocket/news/news.broadcaster.js`
-
-The `broadcast_news()` method automatically sends news to widget clients:
-```javascript
-broadcast_news(news_item) {
-    const news_count = this.#broadcast(news_item);
-    const widget_service = websocket.get_service('widget');
-    if (widget_service) widget_service.broadcast_news(news_item);
-    return news_count;
-}
+```
+src/
+├── components/
+│   ├── Button.tsx                 # Base button component
+│   ├── ConnectionStatus.tsx       # WebSocket connection indicator
+│   ├── ErrorState.tsx             # Error display component
+│   ├── LoadingState.tsx           # Loading spinner
+│   ├── MotionButton.tsx           # Animated button wrapper
+│   ├── SandboxBanner.tsx          # Sandbox mode indicator
+│   ├── StandardTradeButtons.tsx   # Long/Short button pair
+│   ├── SwipeTradeButtonV2.tsx     # Swipe-to-trade component
+│   └── TradeAmountSelector.tsx    # Amount selection buttons
+├── features/
+│   └── news_feed/
+│       ├── amount_button.tsx      # Trade amount button
+│       ├── embedded_tweet.tsx     # Tweet embed renderer
+│       ├── news_card.tsx          # Main news card component
+│       ├── news_card_body.tsx     # Card body with content
+│       ├── news_card_header.tsx   # Card header with source
+│       ├── news_card_trading.tsx  # Trading section
+│       ├── news_detail.tsx        # Expanded news view
+│       ├── news_feed.tsx          # Main feed container
+│       └── trading_row.tsx        # Coin selection row
+├── services/
+│   ├── api_service.ts             # HTTP requests to backend
+│   ├── initialization_service.ts  # Widget initialization
+│   ├── trade_service.ts           # Trade execution logic
+│   └── websocket_service.ts       # WebSocket connection
+├── store/
+│   └── news_store.ts              # Zustand store
+├── styles/
+│   ├── styled.d.ts                # Theme type definitions
+│   └── theme.ts                   # Theme configuration
+├── types/
+│   └── news.ts                    # TypeScript interfaces
+├── app.tsx                        # Root component
+├── config/_index.ts               # Configuration
+├── main.tsx                       # Entry point
+├── mock_data.ts                   # Development mock data
+└── widget.tsx                     # Public API (TerminalWidget.init())
 ```
 
-### Phase 7: Trade Stats (Public Widget) ✅ COMPLETE
+### Frontend Widget - Component Status
 
-**Redis Model:** `app/models/redis/trade_stats.js`
-- `record_trade()` - Increment daily trade count
-- `get_trade_count(days)` - Get trade counts by day
-- `get_widget_stats()` - Get 7d/30d trade stats
-- `sync_from_mongodb(days)` - Backfill from MongoDB
+| Component | Status | Notes |
+|-----------|--------|-------|
+| WebSocket Service | ✅ Complete | Exponential backoff reconnection (1s → 16s, max 5 attempts) |
+| API Service | ✅ Complete | Trade token generation, config fetching |
+| Trade Service | ✅ Complete | Trade execution with token flow |
+| News Store | ✅ Complete | Zustand with connection state, news items, trading config |
+| News Feed | ✅ Complete | Virtualized list, responsive layout |
+| News Card | ✅ Complete | Header, body, trading section |
+| News Card Header | ✅ Complete | Source icon, author, time, coin badges |
+| News Card Body | ✅ Complete | Title, content, embedded tweets |
+| Trading Section | ✅ Complete | Coin selector, amount buttons, trade buttons |
+| Swipe Trade Button | ✅ Complete | Gesture-based trading with haptic feedback |
+| Standard Trade Buttons | ✅ Complete | Long/Short button pair |
+| Shadow DOM Isolation | ✅ Complete | CSS isolation for production |
+| UMD Build | ✅ Complete | Standalone widget deployment |
+| Mock Data | ✅ Complete | 20 items with various info object combinations |
 
-**Public API:** `app/routes/public/public.routes.js`
-- Route: `GET /api/public/stats`
+### Frontend Widget - Features Status
+
+| Feature | Status | Notes |
+|---------|--------|-------|
+| Real-time news streaming | ✅ Complete | Via WebSocket |
+| Trade button interactions | ✅ Complete | Long/Short with visual feedback |
+| Coin selection | ✅ Complete | BTC, ETH, SOL from config |
+| Amount presets | ✅ Complete | From trading config |
+| Connection status | ✅ Complete | Visual indicator |
+| Error states | ✅ Complete | Error display component |
+| Loading states | ✅ Complete | Loading spinner |
+| Sandbox mode banner | ✅ Complete | Dev environment indicator |
+| Dynamic theming | ✅ Complete | From config API |
+| Trade execution | 🟡 Partial | Logs trade but doesn't call execute_trade() |
+| Info metadata display | ❌ Not Started | Retweet/quote/reply/article indicators |
+| Volume alerts | ❌ Not Started | Received via WS but no UI |
+| Sentiment indicators | 🟡 Partial | Data available, display incomplete |
 
 ---
 
 ## Outstanding Tasks
 
-### Backend - ✅ COMPLETE
+### Frontend Widget - Critical
 
-All backend tasks have been completed and verified:
+#### 1. Wire Up Trade Execution
+**Location:** `src/features/news_feed/news_card.tsx:73`
 
-- ✅ Database migrations (006, 007) applied
-- ✅ Test exchange data seeded
-- ✅ REST routes mounted and working
-- ✅ WebSocket service working (API key auth, rate limiting, heartbeat)
-- ✅ News broadcasting to widget clients working
+Currently trades are logged but not executed:
+```typescript
+// Current (incomplete)
+const handle_trade = (side: 'long' | 'short') => {
+    console.log('Trade:', { side, coin: selected_coin, amount: selected_amount, news_id: item._id });
+    // TODO: Call execute_trade from trade_service
+};
+```
 
-**Verified with test scripts:**
-- `scripts/test_widget_connection.js` - WebSocket connection + auth
-- `scripts/test_publish_news.js` - News broadcast to widget clients
+**Fix:** Import and call `execute_trade()` from trade service, handle response/errors.
+
+#### 2. Render Info Object Metadata
+**Location:** `src/features/news_feed/news_card_header.tsx`
+
+The `NewsItem.info` object contains metadata that should be displayed:
+- `isRetweet` - Show retweet indicator
+- `isQuote` - Show quote indicator
+- `isReply` / `isSelfReply` - Show reply indicator
+- `isArticle` - Show article indicator
+- `isTranslated` - Show translation indicator with `originalLanguage`
+- `authorVerificationType` - Show verification badge
+
+#### 3. Display Volume Alerts
+**Location:** New component needed
+
+Volume alerts are received via WebSocket but have no UI. Need to add visual notification when volume alerts arrive.
+
+### Frontend Widget - Minor
+
+#### 4. Complete Sentiment Display
+Add visual sentiment indicators (bullish/bearish/neutral) to news cards.
+
+#### 5. Improve Error Handling UX
+Currently errors only log to console. Add user-facing error messages and retry options.
+
+#### 6. Clean Up Legacy Code
+Remove unused `SwipeTradeButton.tsx` (replaced by `SwipeTradeButtonV2.tsx`).
 
 ### Backend - Optional Enhancements (Future)
 
@@ -212,140 +241,12 @@ All backend tasks have been completed and verified:
 - [ ] Implement origin validation in WebSocket auth
 - Location: `app/websocket/widget/widget.service.js` in `validate_api_key_auth()`
 
-```javascript
-// Check origin if configured
-const origin = req.headers.origin;
-if (exchange_config.allowed_origins?.length > 0 && origin) {
-    if (!exchange_config.allowed_origins.includes(origin)) {
-        return { error: { code: 4008, reason: 'origin not allowed' } };
-    }
-}
-```
-
 #### 2. Widget Dashboard Stats Endpoint
-
-Extend the existing dashboard (`app/routes/dashboard/`) to include widget metrics.
-
-**New Endpoint:**
-```
-GET /dashboard/stats/widget
-```
-
-**Response:**
-```json
-{
-  "connections": {
-    "total_active": 45,
-    "by_exchange": [
-      { "exchange_id": "blofin", "active": 42 },
-      { "exchange_id": "test_exchange", "active": 3 }
-    ]
-  },
-  "trade_tokens": {
-    "total": 1234,
-    "today": 89,
-    "7d": 456,
-    "30d": 1234,
-    "by_exchange": [
-      { "exchange_id": "blofin", "count": 1200 },
-      { "exchange_id": "test_exchange", "count": 34 }
-    ]
-  }
-}
-```
-
-**Data Sources:**
-- `widget_connection.count_total_connections()` - from Redis (active connections)
-- `widget_connection.count_exchange_connections(id)` - from Redis (per-exchange)
-- `widget_trades` table - from PostgreSQL (trade token history)
-
-**Implementation Tasks:**
-- [ ] Add `get_widget_stats()` method to `dashboard.service.js`
-- [ ] Add `get_widget_stats` controller method to `dashboard.controller.js`
-- [ ] Add route `router.get('/stats/widget', dashboard_controller.get_widget_stats)` to `dashboard.routes.js`
-- [ ] Query `exchange_configurations` for list of exchanges
-- [ ] Aggregate `widget_trades` by exchange and time periods
-
-### Frontend Widget (Separate Repository) - NOT STARTED
-
-The frontend widget should be developed in a **separate repository** with the following structure:
-
-```
-widget-frontend/
-├── src/
-│   ├── components/       # UI components (Button, Input, etc.)
-│   ├── features/         # Feature components (TradeForm, NewsDisplay)
-│   ├── hooks/            # Custom hooks (useApi, useWebSocket)
-│   ├── services/
-│   │   ├── api.service.ts     # HTTP requests to backend
-│   │   └── websocket.service.ts
-│   ├── store/            # State management (Zustand)
-│   ├── styles/           # Theme configuration
-│   ├── types/            # TypeScript definitions
-│   ├── main.tsx          # Entry point
-│   └── widget.ts         # Public API (OurWidget.init())
-├── vite.config.ts
-└── package.json
-```
-
-**Frontend Tasks:**
-- [ ] Set up React + Vite + TypeScript project
-- [ ] Implement `OurWidget.init({ container, exchangeId, exchangeUserId })`
-- [ ] Create WebSocket service for news streaming
-- [ ] Create API service for trade token generation
-- [ ] Build trading form component
-- [ ] Build news display component
-- [ ] Implement dynamic theming from config API
-- [ ] Set up CI/CD for CDN deployment
+- [ ] Add `GET /dashboard/stats/widget` for widget metrics
 
 ---
 
-## Backend Component Reference
-
-### File Structure
-
-```
-app/
-├── routes/
-│   └── widget/
-│       ├── widget.routes.js        # REST routes
-│       ├── widget.controller.js    # REST controller
-│       └── widget.service.js       # REST service
-├── models/
-│   ├── postgres/
-│   │   └── widget.js               # PostgreSQL model
-│   └── redis/
-│       ├── widget_connection.js    # Connection tracking
-│       └── trade_stats.js          # Trade statistics
-└── websocket/
-    └── widget/
-        ├── widget.routes.js        # WebSocket setup
-        └── widget.service.js       # WebSocket service
-```
-
-### Configuration
-
-**File:** `config/_index.js`
-
-```javascript
-websocket: {
-    widget: {
-        enabled: false,
-        redis_prefix: 'ws:rate-limit:widget:',
-        connections_per_ip_per_minute: 20,
-        max_concurrent_per_ip: 20,
-        max_concurrent_per_user: 10,
-        messages_per_second: 5,
-        messages_per_minute: 60,
-        auth_timeout_ms: 10000,
-        interval: 30000,  // heartbeat interval
-    }
-}
-```
-
----
-
-## API Reference
+## Backend API Reference
 
 ### REST Endpoints
 
@@ -422,11 +323,6 @@ wss://api.247terminal.com/ws/widget
 { "type": "auth_success", "exchange_id": "blofin" }
 ```
 
-#### Auth Error (Server → Client)
-```json
-{ "type": "auth_error", "error": "invalid api key", "code": 4002 }
-```
-
 #### News Broadcast (Server → Client)
 ```json
 {
@@ -435,18 +331,21 @@ wss://api.247terminal.com/ws/widget
         "_id": "abc123",
         "title": "Bitcoin Surges Past $100K",
         "time": 1702400000000,
-        "coins": ["BTC"]
+        "coins": ["BTC"],
+        "info": {
+            "isRetweet": false,
+            "isQuote": false,
+            "isReply": false,
+            "isSelfReply": false,
+            "isArticle": false,
+            "isTranslated": false,
+            "authorVerificationType": "none"
+        }
     }
 }
 ```
 
-#### Ping/Pong
-```
-Client: "ping" or { "type": "ping" }
-Server: "pong" or { "type": "pong" }
-```
-
-### WebSocket Close Codes
+#### WebSocket Close Codes
 
 | Code | Name | Description |
 |------|------|-------------|
@@ -461,17 +360,36 @@ Server: "pong" or { "type": "pong" }
 
 ## Testing Checklist
 
-### Database Tests
-```bash
-# Verify tables exist
-psql -c "SELECT * FROM exchange_configurations LIMIT 1;"
-psql -c "SELECT * FROM widget_trades LIMIT 1;"
+### Frontend Development
 
-# Check test exchange
-psql -c "SELECT exchange_id, api_key, display_name FROM exchange_configurations WHERE exchange_id = 'test_exchange';"
+```bash
+# Start development server
+pnpm dev
+
+# Build for production
+pnpm build
+
+# Type checking
+pnpm type-check
+```
+
+### WebSocket Connection Test
+
+```javascript
+const ws = new WebSocket('ws://localhost:3000/ws/widget');
+
+ws.onopen = () => {
+    console.log('Connected');
+    ws.send(JSON.stringify({ type: 'auth', api_key: 'wk_test_abc123def456' }));
+};
+
+ws.onmessage = (e) => {
+    console.log('Received:', JSON.parse(e.data));
+};
 ```
 
 ### REST API Tests
+
 ```bash
 # Test config endpoint
 curl "http://localhost:3000/api/app/widget/config?id=test_exchange"
@@ -489,82 +407,3 @@ curl -X POST "http://localhost:3000/api/app/widget/generate-trade-token" \
     }
   }'
 ```
-
-### WebSocket Tests
-```javascript
-// Browser console or Node.js
-const ws = new WebSocket('ws://localhost:3000/ws/widget');
-
-ws.onopen = () => {
-    console.log('Connected');
-    ws.send(JSON.stringify({ type: 'auth', api_key: 'wk_test_abc123def456' }));
-};
-
-ws.onmessage = (e) => {
-    console.log('Received:', JSON.parse(e.data));
-};
-
-ws.onerror = (e) => console.error('Error:', e);
-ws.onclose = (e) => console.log('Closed:', e.code, e.reason);
-```
-
-### News Broadcasting Test
-```bash
-# Publish test news to Redis (will be broadcast to widget clients)
-redis-cli PUBLISH news-feed '{"_id":"test123","title":"Test News","time":1702400000000}'
-```
-
-### Example Test Output
-
-**Terminal 1:** Widget connection test
-```bash
-node scripts/test_widget_connection.js
-```
-
-**Terminal 2:** Publish test news (after connection is authenticated)
-```bash
-node scripts/test_publish_news.js
-```
-
-**Expected Output:**
-```
-[2025-12-18T06:03:26.648Z] 📘 === Widget WebSocket Test Client ===
-[2025-12-18T06:03:26.650Z] 📘 URL: ws://localhost:3000/ws/widget
-[2025-12-18T06:03:26.650Z] 📘 API Key: wk_test_abc123def456
-[2025-12-18T06:03:26.650Z] 📘 Press Ctrl+C to exit
-
-[2025-12-18T06:03:26.650Z] 📘 Connecting to ws://localhost:3000/ws/widget...
-[2025-12-18T06:03:26.659Z] ✅ Connection opened
-[2025-12-18T06:03:26.659Z] 📤 Sending auth message
-{
-  "type": "auth",
-  "api_key": "wk_test_abc123def456"
-}
-[2025-12-18T06:03:26.731Z] 📥 Received message (type: auth_success)
-{
-  "type": "auth_success",
-  "exchange_id": "test_exchange"
-}
-[2025-12-18T06:03:39.593Z] 📥 Received message (type: news)
-{
-  "type": "news",
-  "data": {
-    "_id": "test_1766037819580",
-    "type": "news",
-    "title": "Test News Item - Widget Pipeline Test",
-    "content": "This is a test news item to verify the widget broadcast pipeline is working correctly.",
-    "source": "test_script",
-    "timestamp": "2025-12-18T06:03:39.580Z",
-    "coins": [
-      "BTC",
-      "ETH"
-    ],
-    "sentiment": "neutral"
-  }
-}
-[2025-12-18T06:03:51.657Z] 🏓 Sending ping
-[2025-12-18T06:03:51.658Z] 🏓 Received pong
-[2025-12-18T06:04:16.659Z] 🏓 Sending ping
-[2025-12-18T06:04:16.660Z] 🏓 Received pong
-```
-

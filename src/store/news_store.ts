@@ -36,7 +36,18 @@ export const use_news_store = create<NewsState & NewsActions>((set, get) => ({
             return state;
         }
 
-        const updated = [item, ...state.news_items].slice(0, MAX_NEWS_ITEMS);
+        const raw = item as any;
+        const normalized_item: NewsItem = {
+            ...item,
+            body: item.body || raw.content,
+            time: item.time || (typeof raw.timestamp === 'string'
+                ? new Date(raw.timestamp).getTime()
+                : raw.timestamp),
+        };
+
+        const updated = [normalized_item, ...state.news_items]
+            .sort((a, b) => b.time - a.time)
+            .slice(0, MAX_NEWS_ITEMS);
         return { news_items: updated };
     }),
 

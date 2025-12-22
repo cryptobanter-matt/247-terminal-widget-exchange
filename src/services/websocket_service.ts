@@ -60,6 +60,7 @@ class WebSocketService {
 
     private send_auth_message(): void {
         if (!this.socket || !this.service_config) return;
+        if (this.socket.readyState !== WebSocket.OPEN) return;
 
         const auth_message = {
             type: 'auth',

@@ -1,105 +1,43 @@
-import { useState } from 'preact/hooks';
-import styled, { ThemeProvider, createGlobalStyle } from 'styled-components';
-import { theme } from './styles/theme';
-import type { AppTheme } from './styles/theme';
-import { NewsCard } from './features/news_feed/news_card';
+import { ThemeProvider } from 'styled-components';
+import { use_widget_store } from './store/widget_store';
+import { LoadingState } from './components/LoadingState';
+import { ErrorState } from './components/ErrorState';
+import { ConnectionStatus } from './components/ConnectionStatus';
+import { SandboxBanner } from './components/SandboxBanner';
 import { WidgetContainer } from './components/WidgetContainer';
-import { mock_news_items, mock_trading_configs } from './mock_data';
-
-export type ButtonStyle = 'swipe' | 'standard';
-
-const ToggleContainer = styled.div`
-    display: none;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    padding: 12px;
-    margin-bottom: 12px;
-    background: ${({ theme }) => theme.colors.surface};
-    border-radius: ${({ theme }) => theme.radii.md};
-
-    @media (min-width: 600px) {
-        display: flex;
-    }
-`;
-
-const ToggleLabel = styled.span`
-    font-size: 12px;
-    color: ${({ theme }) => theme.colors.text_secondary};
-    font-weight: 500;
-`;
-
-const ToggleButton = styled.button<{ is_active: boolean }>`
-    padding: 6px 12px;
-    border: none;
-    border-radius: ${({ theme }) => theme.radii.sm};
-    font-size: 12px;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.15s ease;
-    background: ${({ is_active, theme }) => is_active ? theme.colors.primary : 'transparent'};
-    color: ${({ is_active, theme }) => is_active ? '#fff' : theme.colors.text_secondary};
-
-    &:hover {
-        background: ${({ is_active, theme }) => is_active ? theme.colors.primary : 'rgba(255,255,255,0.1)'};
-    }
-`;
-
-const GlobalStyle = createGlobalStyle<{ theme: AppTheme }>`
-  * {
-    box-sizing: border-box;
-  }
-
-  :host {
-    all: initial;
-    display: block;
-    font-family: ${({ theme }) => theme.fonts.body};
-    background-color: ${({ theme }) => theme.colors.background};
-    color: ${({ theme }) => theme.colors.text_primary};
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-    height: 100%;
-  }
-`;
-
+import { NewsFeed } from './features/news_feed/news_feed';
+import config from './config/_index';
 
 export function App() {
-  const [button_style, set_button_style] = useState<ButtonStyle>('standard');
+    const initialization_status = use_widget_store((s) => s.initialization_status);
+    const initialization_error = use_widget_store((s) => s.initialization_error);
+    const theme = use_widget_store((s) => s.theme);
 
-  const handle_trade = (coin: string, amount: number, side: 'long' | 'short', news_id: string) => {
-    console.log(`Trade: ${side.toUpperCase()} $${amount} ${coin} (from news: ${news_id})`);
-  };
+    const active_theme = theme || config.theme.defaults;
 
-  return (
-    <ThemeProvider theme={theme}>
-      <GlobalStyle />
-      <WidgetContainer>
-        <ToggleContainer>
-          <ToggleLabel>Button Style:</ToggleLabel>
-          <ToggleButton
-            is_active={button_style === 'swipe'}
-            onClick={() => set_button_style('swipe')}
-          >
-            Swipe
-          </ToggleButton>
-          <ToggleButton
-            is_active={button_style === 'standard'}
-            onClick={() => set_button_style('standard')}
-          >
-            Standard
-          </ToggleButton>
-        </ToggleContainer>
+    return (
+        <ThemeProvider theme={active_theme}>
+            <WidgetContainer>
+                <SandboxBanner />
 
-        {mock_news_items.map((item, index) => (
-          <NewsCard
-            key={item._id}
-            news_item={item}
-            trading_config={mock_trading_configs[index % mock_trading_configs.length]}
-            button_style={button_style}
-            on_trade={handle_trade}
-          />
-        ))}
-      </WidgetContainer>
-    </ThemeProvider>
-  );
+                {initialization_status === 'loading' && (
+                    <LoadingState message="Initializing widget..." />
+                )}
+
+                {initialization_status === 'error' && (
+                    <ErrorState
+                        message="Failed to initialize widget"
+                        detail={initialization_error || undefined}
+                    />
+                )}
+
+                {initialization_status === 'ready' && (
+                    <>
+                        <ConnectionStatus />
+                        <NewsFeed />
+                    </>
+                )}
+            </WidgetContainer>
+        </ThemeProvider>
+    );
 }

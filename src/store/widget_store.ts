@@ -2,11 +2,13 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import config from '../config/_index.ts';
 import type { ThemeConfig } from '../config/theme.ts';
-import type { FeatureFlags, TradeAmountConfig, InitializationStatus} from '../types/widget.ts';
+import type { FeatureFlags, InitializationStatus, UserPreferences } from '../types/widget.ts';
 
-const MIN_PRESETS = config.trading.min_amount_options;
-const MAX_PRESETS = config.trading.max_amount_options;
-const MIN_AMOUNT = config.trading.min_trade_amount;
+const DEFAULT_USER_PREFERENCES: UserPreferences = {
+    trade_amount_presets: config.trading.default_amounts,
+    button_style: 'swipe',
+    long_press_duration: 750,
+};
 
 interface WidgetState {
     api_key: string | null;
@@ -16,7 +18,7 @@ interface WidgetState {
     feature_flags: FeatureFlags | null;
     initialization_status: InitializationStatus;
     initialization_error: string | null;
-    trade_amounts: TradeAmountConfig;
+    user_preferences: UserPreferences;
 }
 
 interface WidgetActions {
@@ -27,16 +29,8 @@ interface WidgetActions {
     set_initialization_status: (status: InitializationStatus) => void;
     set_initialization_error: (error: string | null) => void;
     reset: () => void;
-    set_trade_amount_presets: (presets: number[]) => void;
-    select_trade_amount: (index: number) => void;
-    set_custom_amount: (amount: number | null) => void;
-    add_trade_amount_preset: (amount: number) => void;
-    remove_trade_amount_preset: (index: number) => void;
-    get_current_trade_amount: () => number;
-}
-
-function validate_amount(amount: number): boolean {
-    return amount >= MIN_AMOUNT && Number.isFinite(amount);
+    set_user_preferences: (preferences: UserPreferences) => void;
+    get_user_preferences: () => UserPreferences;
 }
 
 export const use_widget_store = create<WidgetState & WidgetActions>()(
@@ -49,13 +43,9 @@ export const use_widget_store = create<WidgetState & WidgetActions>()(
             feature_flags: null,
             initialization_status: 'idle',
             initialization_error: null,
-            trade_amounts: {
-                presets: config.trading.default_amounts,
-                selected_index: 0,
-                custom_amount: null,
-            },
+            user_preferences: DEFAULT_USER_PREFERENCES,
 
-            initialize: (api_key, exchange_user_id) => set ({
+            initialize: (api_key, exchange_user_id) => set({
                 api_key,
                 exchange_user_id,
                 initialization_status: 'loading',
@@ -78,109 +68,31 @@ export const use_widget_store = create<WidgetState & WidgetActions>()(
                 initialization_error: null,
             }),
 
-            set_trade_amount_presets: (presets) => {
-                const valid_presets = presets
-                    .filter(validate_amount)
-                    .slice(0, MAX_PRESETS);
+            set_user_preferences: (preferences) => {
+                const validated: UserPreferences = {
+                    trade_amount_presets: preferences.trade_amount_presets
+                        .filter(amount => amount >= 1 && Number.isFinite(amount))
+                        .slice(0, 4),
+                    button_style: preferences.button_style,
+                    long_press_duration: preferences.long_press_duration,
+                };
 
-                if (valid_presets.length < MIN_PRESETS) {
-                    console.warn(`[widget_store] At least ${MIN_PRESETS} trade amount preset required`);
-                    return;
+                if (validated.trade_amount_presets.length < 1) {
+                    validated.trade_amount_presets = DEFAULT_USER_PREFERENCES.trade_amount_presets;
                 }
 
-                set((state) => ({
-                    trade_amounts: {
-                        ...state.trade_amounts,
-                        presets: valid_presets,
-                        selected_index: Math.min(state.trade_amounts.selected_index, valid_presets.length - 1),
-                    },
-                }));
+                set({ user_preferences: validated });
             },
 
-            select_trade_amount: (index) => {
-                const { presets } = get().trade_amounts;
-                if (index < 0 || index >= presets.length) return;
-
-                set((state) => ({
-                    trade_amounts: {
-                        ...state.trade_amounts,
-                        selected_index: index,
-                        custom_amount: null,
-                    },
-                }));
-            },
-
-            set_custom_amount: (amount) => {
-                if (amount !== null && !validate_amount(amount)) {
-                    console.warn(`[widget_store] Invalid trade amount: ${amount}`);
-                    return;
-                }
-
-                set((state) => ({
-                    trade_amounts: {
-                        ...state.trade_amounts,
-                        custom_amount: amount,
-                    },
-                }));
-            },
-
-            add_trade_amount_preset: (amount) => {
-                const { presets } = get().trade_amounts;
-
-                if (presets.length >= MAX_PRESETS) {
-                    console.warn(`[widget_store] Maximum ${MAX_PRESETS} presets allowed`);
-                    return;
-                }
-
-                if (!validate_amount(amount)) {
-                    console.warn(`[widget_store] Invalid amount: ${amount}`);
-                    return;
-                }
-
-                if (presets.includes(amount)) {
-                    console.warn(`[widget_store] Amount ${amount} already exists`);
-                    return;
-                }
-
-                const new_presets = [...presets, amount].sort((a, b) => a - b);
-
-                set((state) => ({
-                    trade_amounts: {
-                        ...state.trade_amounts,
-                        presets: new_presets,
-                    },
-                }));
-            },
-
-            remove_trade_amount_preset: (index) => {
-                const { presets } = get().trade_amounts;
-
-                if (presets.length <= MIN_PRESETS) {
-                    console.warn(`[widget_store] Minimum ${MIN_PRESETS} preset required`);
-                    return;
-                }
-
-                const new_presets = presets.filter((_, i) => i !== index);
-
-                set((state) => ({
-                    trade_amounts: {
-                        ...state.trade_amounts,
-                        presets: new_presets,
-                        selected_index: Math.min(state.trade_amounts.selected_index, new_presets.length - 1),
-                    },
-                }));
-            },
-
-            get_current_trade_amount: () => {
-                const { presets, selected_index, custom_amount } = get().trade_amounts;
-                return custom_amount ?? presets[selected_index];
-            },
+            get_user_preferences: () => get().user_preferences,
         }),
         {
             name: '247terminal-widget-storage',
             partialize: (state) => ({
-                trade_amounts: state.trade_amounts,
+                user_preferences: state.user_preferences,
             }),
         }
     )
-)
+);
+
+export { DEFAULT_USER_PREFERENCES };

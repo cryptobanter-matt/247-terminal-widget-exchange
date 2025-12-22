@@ -8,4 +8,5 @@ export const WidgetContainer = styled.div`
     overflow-y: auto;
     padding: ${({ theme }) => theme.spacing.md};
     background: ${({ theme }) => theme.colors.background};
+    box-sizing: border-box;
 `;

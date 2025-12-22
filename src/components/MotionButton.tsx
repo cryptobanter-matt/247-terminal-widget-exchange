@@ -11,7 +11,7 @@ interface MotionButtonProps {
 const StyledButton = styled.button`
     /* ... all the same CSS from the previous Button example ... */
     padding: ${({ theme }) => theme.spacing.sm} ${({ theme }) => theme.spacing.md};
-    font-size: ${({ theme }) => theme.font_sizes.medium};
+    font-size: ${({ theme }) => theme.font_sizes.md};
     font-weight: 600;
     color: ${({ theme }) => theme.colors.text_primary};
     background-color: ${({ theme }) => theme.colors.primary};

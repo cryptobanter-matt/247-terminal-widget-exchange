@@ -198,19 +198,6 @@ function RoundedProgressRing({ progress, side }: RoundedProgressRingProps) {
     );
 }
 
-const ProgressOverlay = styled(motion.div)<{ side: 'long' | 'short' }>`
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    ${({ side }) => side === 'long' ? 'left: 0;' : 'right: 0;'}
-    width: 50%;
-    background: ${({ side }) =>
-        side === 'long'
-            ? 'linear-gradient(90deg, rgba(255,255,255,0.3) 0%, transparent 100%)'
-            : 'linear-gradient(-90deg, rgba(255,255,255,0.3) 0%, transparent 100%)'};
-    pointer-events: none;
-`;
-
 const HintText = styled.span<{ side: 'long' | 'short' }>`
     position: absolute;
     top: 50%;

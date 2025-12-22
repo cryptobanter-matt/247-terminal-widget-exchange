@@ -1,5 +1,6 @@
 import styled, { keyframes } from 'styled-components';
-import { NewsIcon, TwitterIcon, AlertIcon, ExternalLinkIcon } from '../../components/icons';
+import { NewsIcon, TwitterIcon, AlertIcon, DiscordIcon, ExternalLinkIcon } from '../../components/icons';
+import { SentimentIndicator } from './sentiment_indicator';
 import type { NewsType } from '../../types/news';
 import { container_query } from '../../styles/theme';
 
@@ -17,7 +18,6 @@ const alert_shake = keyframes`
 interface NewsCardHeaderProps {
     type?: NewsType;
     title: string;
-    source_handle?: string;
     time: number;
     url?: string;
     sentiment?: 'positive' | 'negative' | 'neutral';
@@ -25,7 +25,7 @@ interface NewsCardHeaderProps {
 
 const Header = styled.div`
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: ${({ theme }) => theme.spacing.sm};
     margin-bottom: ${({ theme }) => theme.spacing.sm};
 
@@ -35,7 +35,7 @@ const Header = styled.div`
     }
 `;
 
-const TypeIconWrapper = styled.div<{ is_alert?: boolean }>`
+const IconWrapper = styled.div<{ is_alert?: boolean }>`
     flex-shrink: 0;
     width: 28px;
     height: 28px;
@@ -47,6 +47,7 @@ const TypeIconWrapper = styled.div<{ is_alert?: boolean }>`
     color: ${({ is_alert, theme }) => is_alert ? '#f59e0b' : theme.colors.text_secondary};
     animation: ${({ is_alert }) => is_alert ? alert_shake : 'none'} 1.2s ease-out;
     animation-delay: 0.3s;
+    overflow: hidden;
 
     ${container_query.min_wide} {
         width: 32px;
@@ -57,11 +58,16 @@ const TypeIconWrapper = styled.div<{ is_alert?: boolean }>`
 const TitleWrapper = styled.a<{ is_alert?: boolean }>`
     flex: 1;
     min-width: 0;
+    min-height: 28px;
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     gap: 6px;
     text-decoration: none;
     cursor: pointer;
+
+    ${container_query.min_wide} {
+        min-height: 32px;
+    }
 
     &:hover .title-text {
         color: ${({ is_alert, theme }) => is_alert ? '#f59e0b' : theme.colors.primary};
@@ -75,7 +81,7 @@ const TitleWrapper = styled.a<{ is_alert?: boolean }>`
 
 const TitleText = styled.span<{ is_alert?: boolean }>`
     font-weight: 600;
-    font-size: ${({ theme }) => theme.font_sizes.medium};
+    font-size: ${({ theme }) => theme.font_sizes.md};
     color: ${({ is_alert, theme }) => is_alert ? '#f59e0b' : theme.colors.text_primary};
     line-height: 1.3;
     transition: color 0.15s ease;
@@ -85,7 +91,7 @@ const TitleText = styled.span<{ is_alert?: boolean }>`
     overflow: hidden;
 
     ${container_query.min_wide} {
-        font-size: ${({ theme }) => theme.font_sizes.large};
+        font-size: ${({ theme }) => theme.font_sizes.lg};
     }
 `;
 
@@ -110,17 +116,6 @@ const RightSection = styled.div`
     gap: 4px;
 `;
 
-const SentimentLabel = styled.span<{ sentiment: string }>`
-    font-size: 10px;
-    font-weight: 700;
-    letter-spacing: 0.5px;
-    text-align: right;
-    color: ${({ sentiment, theme }) =>
-        sentiment === 'positive' ? theme.colors.success :
-        sentiment === 'negative' ? theme.colors.danger :
-        theme.colors.text_secondary};
-`;
-
 const Timestamp = styled.span`
     font-size: 10px;
     color: ${({ theme }) => theme.colors.text_secondary};
@@ -137,28 +132,17 @@ function TypeIcon({ type }: { type?: NewsType }) {
             return <TwitterIcon size={16} />;
         case 'alert':
             return <AlertIcon size={16} />;
+        case 'discord':
+            return <DiscordIcon size={16} />;
         case 'news':
         default:
             return <NewsIcon size={16} />;
     }
 }
 
-function get_sentiment_text(sentiment: 'positive' | 'negative' | 'neutral'): string {
-    switch (sentiment) {
-        case 'positive':
-            return 'POSITIVE';
-        case 'negative':
-            return 'NEGATIVE';
-        case 'neutral':
-        default:
-            return 'NEUTRAL';
-    }
-}
-
 export function NewsCardHeader({
     type,
     title,
-    source_handle,
     time,
     url,
     sentiment
@@ -172,9 +156,7 @@ export function NewsCardHeader({
         return `${Math.floor(diff / 1440)}d ago`;
     };
 
-    const display_title = type === 'twitter' && source_handle
-        ? `@${source_handle}`
-        : title;
+    const display_title = title;
 
     const handle_click = (e: MouseEvent) => {
         e.stopPropagation();
@@ -182,9 +164,9 @@ export function NewsCardHeader({
 
     return (
         <Header>
-            <TypeIconWrapper is_alert={type === 'alert'}>
+            <IconWrapper is_alert={type === 'alert'}>
                 <TypeIcon type={type} />
-            </TypeIconWrapper>
+            </IconWrapper>
 
             <TitleWrapper
                 is_alert={type === 'alert'}
@@ -204,11 +186,7 @@ export function NewsCardHeader({
             </TitleWrapper>
 
             <RightSection>
-                {sentiment && (
-                    <SentimentLabel sentiment={sentiment}>
-                        {get_sentiment_text(sentiment)}
-                    </SentimentLabel>
-                )}
+                {sentiment && <SentimentIndicator sentiment={sentiment} />}
                 <Timestamp>{format_relative_time(time)}</Timestamp>
             </RightSection>
         </Header>

@@ -25,6 +25,11 @@ const config = {
         min_amount_options: 1,
         max_amount_options: 4,
         min_trade_amount: 1,
+        default_coins: [
+            { symbol: 'BTC', name: 'Bitcoin', enabled: true },
+            { symbol: 'ETH', name: 'Ethereum', enabled: true },
+            { symbol: 'SOL', name: 'Solana', enabled: true },
+        ],
     },
     theme: {
         defaults: {
@@ -75,6 +80,7 @@ const config = {
                 lg: '0 10px 15px rgba(0, 0, 0, 0.5)',
             },
             breakpoints: {
+                very_narrow: 350,
                 narrow: 500,
                 medium: 700,
                 wide: 900,

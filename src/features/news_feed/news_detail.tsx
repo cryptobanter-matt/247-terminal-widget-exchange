@@ -23,7 +23,7 @@ const BackButton = styled.button`
     cursor: pointer;
     padding: 0;
     margin-bottom: ${({ theme }) => theme.spacing.md};
-    font-size: ${({ theme }) => theme.font_sizes.medium};
+    font-size: ${({ theme }) => theme.font_sizes.md};
 
     &:hover {
         text-decoration: underline;
@@ -32,7 +32,7 @@ const BackButton = styled.button`
 
 const Title = styled.h2`
     margin: 0 0 ${({ theme }) => theme.spacing.sm} 0;
-    font-size: ${({ theme }) => theme.font_sizes.large};
+    font-size: ${({ theme }) => theme.font_sizes.lg};
 `;
 
 const Meta = styled.div`
@@ -40,7 +40,7 @@ const Meta = styled.div`
     align-items: center;
     gap: ${({ theme }) => theme.spacing.sm};
     margin-bottom: ${({ theme }) => theme.spacing.md};
-    font-size: ${({ theme }) => theme.font_sizes.small};
+    font-size: ${({ theme }) => theme.font_sizes.sm};
     color: ${({ theme }) => theme.colors.text_secondary};
 `;
 
@@ -66,7 +66,7 @@ const TradeButton = styled.button`
     color: ${({ theme }) => theme.colors.text_primary};
     border: none;
     border-radius: ${({ theme }) => theme.radii.md};
-    font-size: ${({ theme }) => theme.font_sizes.medium};
+    font-size: ${({ theme }) => theme.font_sizes.md};
     font-weight: 600;
     cursor: pointer;
 
@@ -81,7 +81,7 @@ const LinkButton = styled.a`
     color: ${({ theme }) => theme.colors.primary};
     border: 1px solid ${({ theme }) => theme.colors.primary};
     border-radius: ${({ theme }) => theme.radii.md};
-    font-size: ${({ theme }) => theme.font_sizes.medium};
+    font-size: ${({ theme }) => theme.font_sizes.md};
     text-decoration: none;
     text-align: center;
 
@@ -101,7 +101,6 @@ export function NewsDetail({ news_item, sentiment, on_back, on_trade }: NewsDeta
             <BackButton onClick={on_back}>← Back to feed</BackButton>
             <Title>{news_item.title}</Title>
             <Meta>
-                {news_item.source && <span>{news_item.source}</span>}
                 <span>{format_datetime(news_item.time)}</span>
                 {sentiment && <SentimentIndicator sentiment={sentiment.sentiment} />}
             </Meta>
@@ -114,8 +113,8 @@ export function NewsDetail({ news_item, sentiment, on_back, on_trade }: NewsDeta
                         Trade on this news
                     </TradeButton>
                 )}
-                {news_item.url && (
-                    <LinkButton href={news_item.url} target="_blank" rel="noopener noreferrer">
+                {news_item.link && (
+                    <LinkButton href={news_item.link} target="_blank" rel="noopener noreferrer">
                         Read source
                     </LinkButton>
                 )}

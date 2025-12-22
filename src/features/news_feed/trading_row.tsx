@@ -29,26 +29,14 @@ const CoinInfo = styled.div`
 
 const CoinSymbol = styled.span`
     font-weight: 600;
-    font-size: ${({ theme }) => theme.font_sizes.medium};
+    font-size: ${({ theme }) => theme.font_sizes.md};
     color: ${({ theme }) => theme.colors.text_primary};
-`;
-
-const PriceChange = styled.span<{ is_positive: boolean }>`
-    font-size: ${({ theme }) => theme.font_sizes.small};
-    color: ${({ theme, is_positive }) =>
-        is_positive ? theme.colors.success : theme.colors.danger
-    };
 `;
 
 export function TradingRow({ coin, amount_presets, on_trade }: TradingRowProps) {
     const handle_trade = (amount: number, side: 'long' | 'short') => {
         on_trade(coin.symbol, amount, side);
     };
-
-    const is_positive = (coin.price_change_percent ?? 0) >= 0;
-    const formatted_change = coin.price_change_percent !== undefined
-        ? `${is_positive ? '+' : ''}${coin.price_change_percent.toFixed(2)}%`
-        : null;
 
     const long_amounts = [...amount_presets].sort((a, b) => a - b);
     const short_amounts = [...amount_presets].sort((a, b) => b - a);
@@ -68,11 +56,6 @@ export function TradingRow({ coin, amount_presets, on_trade }: TradingRowProps) 
 
             <CoinInfo>
                 <CoinSymbol>{coin.symbol}</CoinSymbol>
-                {formatted_change && (
-                    <PriceChange is_positive={is_positive}>
-                        {formatted_change}
-                    </PriceChange>
-                )}
             </CoinInfo>
 
             <ButtonGroup>

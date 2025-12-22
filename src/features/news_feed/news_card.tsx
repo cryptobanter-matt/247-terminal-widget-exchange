@@ -4,14 +4,17 @@ import { motion } from 'framer-motion';
 import { NewsCardHeader } from './news_card_header';
 import { NewsCardBody } from './news_card_body';
 import { NewsCardTrading } from './news_card_trading';
-import type { NewsItem, TradingConfig } from '../../types/news';
-import type { ButtonStyle } from '../../app';
+import type { NewsItem, TradingConfig, NewsType } from '../../types/news';
+import type { ButtonStyle, LongPressDuration } from '../../types/widget';
 import { container_query } from '../../styles/theme';
 
 interface NewsCardProps {
     news_item: NewsItem;
+    sentiment?: 'positive' | 'negative' | 'neutral';
+    on_click?: (id: string) => void;
     trading_config?: TradingConfig;
     button_style?: ButtonStyle;
+    long_press_duration?: LongPressDuration;
     on_trade?: (coin: string, amount: number, side: 'long' | 'short', news_id: string) => void;
 }
 
@@ -57,8 +60,10 @@ const BodyWrapper = styled.div`
 
 export function NewsCard({
     news_item,
+    sentiment,
     trading_config,
     button_style = 'swipe',
+    long_press_duration = 750,
     on_trade
 }: NewsCardProps) {
     const [is_seen, set_is_seen] = useState(false);
@@ -69,7 +74,7 @@ export function NewsCard({
         set_pulse_side(null);
         setTimeout(() => set_pulse_side(side), 10);
         setTimeout(() => set_pulse_side(null), 510);
-        on_trade?.(coin, amount, side, news_item._id);
+        on_trade?.(coin, amount, side, news_item._id || '');
     };
 
     const handle_interaction = () => {
@@ -91,12 +96,11 @@ export function NewsCard({
             onTouchStart={handle_interaction}
         >
             <NewsCardHeader
-                type={news_item.type}
+                type={news_item.type as NewsType}
                 title={news_item.title}
-                source_handle={news_item.source_handle}
                 time={news_item.time}
-                url={news_item.url || news_item.link}
-                sentiment={news_item.sentiment}
+                url={news_item.link}
+                sentiment={sentiment}
             />
 
             {has_body_content && (
@@ -113,6 +117,7 @@ export function NewsCard({
                 <NewsCardTrading
                     config={trading_config}
                     button_style={button_style}
+                    long_press_duration={long_press_duration}
                     on_trade={handle_trade}
                 />
             )}

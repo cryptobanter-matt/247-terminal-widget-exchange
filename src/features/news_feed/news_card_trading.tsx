@@ -3,12 +3,13 @@ import styled from 'styled-components';
 import { SwipeTradeButton } from '../../components/SwipeTradeButton';
 import { StandardTradeButtons } from '../../components/StandardTradeButtons';
 import type { TradingConfig } from '../../types/news';
-import type { ButtonStyle } from '../../app';
-import { theme } from '../../styles/theme';
+import type { ButtonStyle, LongPressDuration } from '../../types/widget';
+import app_config from '../../config/_index';
 
 interface NewsCardTradingProps {
     config: TradingConfig;
     button_style?: ButtonStyle;
+    long_press_duration?: LongPressDuration;
     on_trade: (coin: string, amount: number, side: 'long' | 'short') => void;
 }
 
@@ -22,7 +23,7 @@ const SwipeContainer = styled.div`
     gap: ${({ theme }) => theme.spacing.xs};
 `;
 
-export function NewsCardTrading({ config, button_style = 'swipe', on_trade }: NewsCardTradingProps) {
+export function NewsCardTrading({ config, button_style = 'swipe', long_press_duration = 750, on_trade }: NewsCardTradingProps) {
     const wrapper_ref = useRef<HTMLDivElement>(null);
     const [is_narrow, set_is_narrow] = useState(false);
 
@@ -32,7 +33,7 @@ export function NewsCardTrading({ config, button_style = 'swipe', on_trade }: Ne
 
         const check_width = (width: number) => {
             if (width > 0) {
-                set_is_narrow(width < theme.breakpoints.narrow);
+                set_is_narrow(width < app_config.theme.defaults.breakpoints.narrow);
             }
         };
 
@@ -55,8 +56,8 @@ export function NewsCardTrading({ config, button_style = 'swipe', on_trade }: Ne
             {effective_style === 'standard' ? (
                 <StandardTradeButtons
                     coins={config.coins}
-                    amount_presets={config.amount_presets}
-                    long_press_duration={500}
+                    amount_presets={config.preset_amounts}
+                    long_press_duration={long_press_duration}
                     on_trade={on_trade}
                 />
             ) : (
@@ -65,8 +66,8 @@ export function NewsCardTrading({ config, button_style = 'swipe', on_trade }: Ne
                         <SwipeTradeButton
                             key={coin.symbol}
                             coin={coin.symbol}
-                            price_change_percent={coin.price_change_percent}
-                            amount_presets={config.amount_presets}
+                            amount_presets={config.preset_amounts}
+                            long_press_duration={long_press_duration}
                             on_trade={(c, amount, side) => on_trade(c, amount, side)}
                         />
                     ))}

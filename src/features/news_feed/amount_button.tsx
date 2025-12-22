@@ -9,7 +9,7 @@ interface AmountButtonProps {
 const Button = styled.button<{ side: 'long' | 'short' }>`
     padding: ${({ theme }) => theme.spacing.xs} ${({ theme }) => theme.spacing.sm};
     min-width: 60px;
-    font-size: ${({ theme }) => theme.font_sizes.small};
+    font-size: ${({ theme }) => theme.font_sizes.sm};
     font-weight: 600;
     color: ${({ theme }) => theme.colors.text_primary};
     background-color: ${({ theme, side }) =>

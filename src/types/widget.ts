@@ -23,3 +23,13 @@ export interface TradeAmountConfig {
 }
 
 export type InitializationStatus = 'idle' | 'loading' | 'ready' | 'error';
+
+export type ButtonStyle = 'swipe' | 'standard';
+
+export type LongPressDuration = 0 | 500 | 750 | 1000;
+
+export interface UserPreferences {
+    trade_amount_presets: number[];
+    button_style: ButtonStyle;
+    long_press_duration: LongPressDuration;
+}

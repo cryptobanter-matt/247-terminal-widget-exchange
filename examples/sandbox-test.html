@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Widget Sandbox Test</title>
+    <style>
+        body {
+            font-family: system-ui, sans-serif;
+            background: #0a0a0f;
+            color: #fff;
+            padding: 20px;
+            margin: 0;
+        }
+        h1 { color: #f59e0b; }
+        #widget {
+            width: 400px;
+            height: 600px;
+            border: 1px solid #333;
+            border-radius: 8px;
+        }
+        #trade-log {
+            margin-top: 20px;
+            padding: 16px;
+            background: #1a1a24;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .trade-entry {
+            padding: 8px;
+            margin-bottom: 8px;
+            background: #12121a;
+            border-radius: 4px;
+            border-left: 3px solid #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sandbox Test Environment</h1>
+    <p>Trades are simulated - no real orders will be placed.</p>
+
+    <div id="widget"></div>
+
+    <div id="trade-log">
+        <strong>Trade Events:</strong>
+        <div id="trade-entries"></div>
+    </div>
+
+    <script src="../dist/widget.js"></script>
+    <script>
+        document.addEventListener('247terminal:trade', function(event) {
+            var entries = document.getElementById('trade-entries');
+            var entry = document.createElement('div');
+            entry.className = 'trade-entry';
+            entry.innerHTML =
+                '<div><strong>' + event.detail.side.toUpperCase() + ' ' + event.detail.coin + '</strong></div>' +
+                '<div>Amount: $' + event.detail.amount_usd + '</div>' +
+                '<div>Trade ID: ' + event.detail.trade_id + '</div>' +
+                '<div>Sandbox: ' + (event.detail.is_sandbox ? 'Yes' : 'No') + '</div>' +
+                '<div style="font-size:10px;color:#666">' + new Date().toISOString() + '</div>';
+            entries.insertBefore(entry, entries.firstChild);
+            console.log('[SANDBOX TEST] Trade event received:', event.detail);
+        });
+
+        ExchangeWidget.init({
+            container_selector: '#widget',
+            api_key: 'wk_test_sandbox123',
+            exchange_user_id: 'test-user-001',
+        }).then(function(instance) {
+            if (instance) {
+                console.log('Widget initialized in sandbox mode');
+            }
+        });
+    </script>
+</body>
+</html>

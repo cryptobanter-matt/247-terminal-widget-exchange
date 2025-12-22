@@ -18,6 +18,7 @@
     "@preact/preset-vite": "^2.10.2",
     "@types/node": "^24.10.1",
     "@types/styled-components": "^5.1.36",
+    "esbuild": "^0.27.2",
     "typescript": "~5.9.3",
     "vite": "npm:rolldown-vite@7.2.5"
   },

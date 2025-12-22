@@ -1,10 +1,7 @@
 import { useState, useRef, useCallback, useEffect } from 'preact/hooks';
 import styled, { keyframes } from 'styled-components';
 
-interface CoinConfig {
-    symbol: string;
-    price_change_percent: number;
-}
+import type { CoinConfig } from '../types/news';
 
 interface StandardTradeButtonsProps {
     coins: CoinConfig[];
@@ -81,16 +78,6 @@ const CoinSymbol = styled.span`
     font-size: 14px;
     font-weight: 700;
     color: ${({ theme }) => theme.colors.text_primary};
-    line-height: 1.2;
-    user-select: none;
-    -webkit-user-select: none;
-`;
-
-const PriceChange = styled.span<{ is_positive: boolean }>`
-    font-size: 10px;
-    font-weight: 600;
-    color: ${({ is_positive, theme }) =>
-        is_positive ? theme.colors.success : theme.colors.danger};
     line-height: 1.2;
     user-select: none;
     -webkit-user-select: none;
@@ -498,9 +485,6 @@ export function StandardTradeButtons({
 
                     <CoinInfo>
                         <CoinSymbol>{coin.symbol}</CoinSymbol>
-                        <PriceChange is_positive={coin.price_change_percent >= 0}>
-                            {coin.price_change_percent >= 0 ? '+' : ''}{coin.price_change_percent.toFixed(2)}%
-                        </PriceChange>
                     </CoinInfo>
 
                     {layout === 'wide'

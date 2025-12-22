@@ -1,16 +1,31 @@
 export interface NewsItem {
-    _id: string;
     title: string;
-    body?: string;
+    body: string;
     time: number;
-    type?: 'news' | 'twitter' | 'alert';
-    source?: string;
-    source_handle?: string;
-    sentiment?: 'positive' | 'negative' | 'neutral';
+    icon: string;
+    link: string;
+    scrapedTime: number;
+    _id?: string;
+    image?: string;
+    type?: string;
     coins?: string[];
-    info?: {
-        embedded_tweet?: EmbeddedTweet;
-    };
+    info?: NewsItemInfo;
+}
+
+export interface NewsItemInfo {
+    binanceUid?: string | null;
+    squareUid?: string;
+    isReply?: boolean;
+    isRetweet?: boolean;
+    isQuote?: boolean;
+    isSelfReply?: boolean;
+    isArticle?: boolean;
+    authorVerificationType?: number;
+    isTranslated?: boolean;
+    originalLanguage?: string;
+    embedded_tweet?: EmbeddedTweet;
+    username?: string;
+    profileUrl?: string;
 }
 
 export interface EmbeddedTweet {
@@ -20,6 +35,8 @@ export interface EmbeddedTweet {
     author_handle: string;
     author_avatar?: string;
     created_at: string;
+    link?: string;
+    image?: string;
 }
 
 export interface SentimentData {
@@ -35,6 +52,20 @@ export interface TradingVolumeAlert {
     volume_change: number;
     time: number;
 }
+
+export interface TradingConfig {
+    enabled: boolean;
+    coins: CoinConfig[];
+    preset_amounts: number[];
+}
+
+export interface CoinConfig {
+    symbol: string;
+    name: string;
+    enabled: boolean;
+}
+
+export type NewsType = 'news' | 'twitter' | 'alert' | 'discord';
 
 export type WebSocketMessage =
     | { type: 'auth_success'; exchange_id: string }
