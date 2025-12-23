@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback } from 'preact/hooks';
 import styled, { keyframes } from 'styled-components';
+import { ChevronLeftIcon, ChevronRightIcon } from './icons';
 
 interface SwipeTradeButtonProps {
     coin: string;
@@ -164,6 +165,35 @@ const Dot = styled.div<{ is_active: boolean }>`
     transition: all 0.2s ease;
 `;
 
+const AmountArrow = styled.button<{ side: 'left' | 'right'; is_visible: boolean }>`
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    ${({ side }) => side === 'left' ? 'left: -22px;' : 'right: -22px;'}
+    width: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.08);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    pointer-events: auto;
+    opacity: ${({ is_visible }) => is_visible ? 0.6 : 0.2};
+    transition: all 0.15s ease;
+    padding: 0;
+
+    &:hover {
+        opacity: 1;
+        background: rgba(255, 255, 255, 0.15);
+    }
+
+    &:active {
+        transform: scale(0.95);
+        background: rgba(255, 255, 255, 0.2);
+    }
+`;
+
 const ProgressRing = styled.svg`
     position: absolute;
     top: -3px;
@@ -303,6 +333,26 @@ export function SwipeTradeButton({
         setTimeout(() => set_is_pulsing(false), 300);
     }, []);
 
+    const handle_amount_decrement = useCallback((e: MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (amount_index > 0) {
+            set_amount_index(amount_index - 1);
+            current_amount_index_ref.current = amount_index - 1;
+            trigger_pulse();
+        }
+    }, [amount_index, trigger_pulse]);
+
+    const handle_amount_increment = useCallback((e: MouseEvent) => {
+        e.stopPropagation();
+        e.preventDefault();
+        if (amount_index < amount_presets.length - 1) {
+            set_amount_index(amount_index + 1);
+            current_amount_index_ref.current = amount_index + 1;
+            trigger_pulse();
+        }
+    }, [amount_index, amount_presets.length, trigger_pulse]);
+
     const handle_pointer_down = useCallback((e: PointerEvent) => {
         if (!container_ref.current) return;
 
@@ -412,6 +462,16 @@ export function SwipeTradeButton({
 
             <CenterInfo is_pressing={is_pressing} has_dots={amount_presets.length > 1}>
                 <RoundedProgressRing progress={progress} side={active_side} />
+                {amount_presets.length > 1 && (
+                    <AmountArrow
+                        side="left"
+                        is_visible={amount_index > 0}
+                        onClick={handle_amount_decrement}
+                        onPointerDown={(e) => e.stopPropagation()}
+                    >
+                        <ChevronLeftIcon size={12} color="rgba(255,255,255,0.9)" />
+                    </AmountArrow>
+                )}
                 <CoinLabel>{coin}</CoinLabel>
                 {price_change_percent !== undefined && (
                     <PriceChange is_positive={price_change_percent >= 0}>
@@ -420,11 +480,21 @@ export function SwipeTradeButton({
                 )}
                 <AmountLabel key={pulse_key} is_pulsing={is_pulsing}>${current_amount}</AmountLabel>
                 {amount_presets.length > 1 && (
-                    <DotIndicator>
-                        {amount_presets.map((_, index) => (
-                            <Dot key={index} is_active={index === amount_index} />
-                        ))}
-                    </DotIndicator>
+                    <>
+                        <DotIndicator>
+                            {amount_presets.map((_, index) => (
+                                <Dot key={index} is_active={index === amount_index} />
+                            ))}
+                        </DotIndicator>
+                        <AmountArrow
+                            side="right"
+                            is_visible={amount_index < amount_presets.length - 1}
+                            onClick={handle_amount_increment}
+                            onPointerDown={(e) => e.stopPropagation()}
+                        >
+                            <ChevronRightIcon size={12} color="rgba(255,255,255,0.9)" />
+                        </AmountArrow>
+                    </>
                 )}
             </CenterInfo>
         </Container>

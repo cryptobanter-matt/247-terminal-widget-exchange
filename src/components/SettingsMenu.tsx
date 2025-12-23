@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useMemo } from 'preact/hooks';
 import styled from 'styled-components';
 import { use_widget_store } from '../store/widget_store';
+import { api_service } from '../services/api_service';
 import type { ButtonStyle, LongPressDuration, UserPreferences } from '../types/widget';
 
 interface SettingsMenuProps {
@@ -144,24 +145,24 @@ const AmountInput = styled.input`
     }
 `;
 
-const SaveButton = styled.button`
+const SaveButton = styled.button<{ disabled?: boolean }>`
     width: 100%;
     padding: ${({ theme }) => theme.spacing.sm};
     margin-top: ${({ theme }) => theme.spacing.md};
     border: none;
     border-radius: ${({ theme }) => theme.radii.sm};
-    background: ${({ theme }) => theme.colors.success};
+    background: ${({ theme, disabled }) => disabled ? theme.colors.text_muted : theme.colors.success};
     color: white;
     font-size: ${({ theme }) => theme.font_sizes.sm};
     font-weight: 600;
-    cursor: pointer;
-    transition: opacity 0.15s ease;
+    cursor: ${({ disabled }) => disabled ? 'not-allowed' : 'pointer'};
+    transition: all 0.15s ease;
 
-    &:hover {
+    &:hover:not(:disabled) {
         opacity: 0.9;
     }
 
-    &:active {
+    &:active:not(:disabled) {
         opacity: 0.8;
     }
 `;
@@ -197,6 +198,8 @@ export function SettingsMenu({ is_open, on_close }: SettingsMenuProps) {
         const count = user_preferences.trade_amount_presets.length;
         return VALID_PRESET_COUNTS.includes(count as 1 | 2 | 4) ? (count as 1 | 2 | 4) : 2;
     });
+
+    const [is_saving, set_is_saving] = useState(false);
 
     useEffect(() => {
         if (is_open) {
@@ -279,8 +282,19 @@ export function SettingsMenu({ is_open, on_close }: SettingsMenuProps) {
         }));
     };
 
-    const handle_save = () => {
+    const handle_save = async () => {
+        set_is_saving(true);
+
         set_user_preferences(local_preferences);
+
+        const success = await api_service.save_user_preferences(local_preferences);
+
+        set_is_saving(false);
+
+        if (!success) {
+            console.warn('[SettingsMenu] Backend sync failed, preferences saved locally only');
+        }
+
         on_close();
     };
 
@@ -350,8 +364,8 @@ export function SettingsMenu({ is_open, on_close }: SettingsMenuProps) {
                 </Section>
 
                 {has_changes && (
-                    <SaveButton onClick={handle_save}>
-                        Save
+                    <SaveButton onClick={handle_save} disabled={is_saving}>
+                        {is_saving ? 'Saving...' : 'Save'}
                     </SaveButton>
                 )}
             </MenuContainer>

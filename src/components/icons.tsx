@@ -76,3 +76,19 @@ export function CloseIcon({ size = 16, color = 'currentColor' }: IconProps) {
         </Svg>
     );
 }
+
+export function ChevronLeftIcon({ size = 16, color = 'currentColor' }: IconProps) {
+    return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+        </Svg>
+    );
+}
+
+export function ChevronRightIcon({ size = 16, color = 'currentColor' }: IconProps) {
+    return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="9 6 15 12 9 18" />
+        </Svg>
+    );
+}

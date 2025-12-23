@@ -33,3 +33,12 @@ export interface UserPreferences {
     button_style: ButtonStyle;
     long_press_duration: LongPressDuration;
 }
+
+export interface UserPreferenceResponse {
+    success: boolean;
+    status: string;
+    message: string;
+    data: {
+        user_preferences: UserPreferences;
+    };
+}

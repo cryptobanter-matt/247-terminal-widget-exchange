@@ -48,6 +48,13 @@ export async function initialize_widget(options: InitOptions): Promise<boolean> 
             widget_store.set_feature_flags(widget_config.feature_flags);
         }
 
+        if (options.exchange_user_id) {
+            const saved_preferences = await api_service.fetch_user_preferences();
+            if (saved_preferences) {
+                widget_store.set_user_preferences(saved_preferences);
+            }
+        }
+
         websocket_service.connect({
             api_key: options.api_key,
             on_news: (news_item) => news_store.add_news_item(news_item),
